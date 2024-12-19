@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+  node-crontab:
+    container_name: node-crontab
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # image: xzsean/node:corntab
+    volumes:
+      - ./apps:/app
+      - ./crontabs:/var/spool/cron/crontabs
+    ports:
+      - "5060-5065:5060-5065"
+    # environment:
+    #   - http_proxy=http://172.88.0.1:7897
+    #   - https_proxy=http://172.88.0.1:7897
+    restart: unless-stopped
+    command: sh -c "cron && tail -f /var/log/cron.log"
+
+volumes:
+  crontab_data:
+# networks:
+#   vpn:
+#     external: true
