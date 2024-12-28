@@ -1,0 +1,20 @@
+version: '3'
+
+services:
+  ipfs:
+    image: ipfs/kubo:latest
+    container_name: ipfs-node
+    ports:
+      - "5071:4001"      # IPFS swarm
+      - "5072:5001"      # IPFS API
+      - "5073:8080"      # IPFS Gateway
+    volumes:
+      - ./data/ipfs:/data/ipfs
+      - ./export:/export
+    environment:
+      - IPFS_PROFILE=server
+      - IPFS_PATH=/data/ipfs
+      - IPFS_API_CORS_ALLOWED_ORIGINS=["http://52.73.157.190:5072", "http://localhost:3000", "http://127.0.0.1:5001", "https://webui.ipfs.io"]
+      - IPFS_API_CORS_ALLOWED_METHODS=["PUT", "POST", "GET"]
+      - IPFS_API_HEADERS={"Access-Control-Allow-Origin":["http://52.73.157.190:5072", "http://localhost:3000", "http://127.0.0.1:5001", "https://webui.ipfs.io"],"Access-Control-Allow-Methods":["PUT","POST","GET"]}
+    restart: unless-stopped
