@@ -1,7 +1,14 @@
 # 使用Node.js 20.12.2作为基础镜像
 FROM node:20.12.2
 
-# 安装cron和其他必要工具，并清理缓存
+# 创建并配置阿里云源
+RUN rm -rf /etc/apt/sources.list.d/* && \
+    rm -f /etc/apt/sources.list && \
+    echo "deb https://mirrors.aliyun.com/debian/ bookworm main" > /etc/apt/sources.list && \
+    echo "deb https://mirrors.aliyun.com/debian-security bookworm-security main" >> /etc/apt/sources.list && \
+    echo "deb https://mirrors.aliyun.com/debian/ bookworm-updates main" >> /etc/apt/sources.list
+
+# 更新并安装必要工具
 RUN apt-get update && \
     apt-get install -y --no-install-recommends cron curl && \
     apt-get clean && \
