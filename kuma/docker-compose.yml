@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "13001:3001"
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - uptime-network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"  # 支持自动更新
+    environment:
+      - TZ=Asia/Shanghai
+      - UPTIME_KUMA_DISABLE_FRAME_SAMEORIGIN=true  # 允许在iframe中嵌入
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  uptime-network:
+    driver: bridge
