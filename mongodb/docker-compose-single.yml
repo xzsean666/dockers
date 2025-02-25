@@ -1,0 +1,22 @@
+  version: '3.3'
+  services:
+    mongodb:
+      image: mongo:7.0
+      container_name: mongodb
+      restart: always
+      env_file: .env
+      environment:
+        MONGO_INITDB_ROOT_USERNAME: $MONGO_INITDB_ROOT_USERNAME
+        MONGO_INITDB_ROOT_PASSWORD: $MONGO_INITDB_ROOT_PASSWORD  
+      ports:
+        - "0.0.0.0:17017:27017"
+      volumes:
+        - ./data:/data/db
+      # command: mongod --auth --port 27017
+      command: ["--bind_ip_all", "--port", "27017","--auth"]
+      deploy:
+        resources:
+          limits:
+            cpus: '2'
+            memory: "4G"
+

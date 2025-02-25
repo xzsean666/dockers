@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+  postgresql-slave:
+    image: 'bitnami/postgresql:latest'
+    container_name: postgresql-slave
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=slave
+      - POSTGRESQL_MASTER_HOST=主数据库的IP地址或主机名
+      - POSTGRESQL_MASTER_PORT_NUMBER=5432
+      - POSTGRESQL_REPLICATION_USER=repl_user
+      - POSTGRESQL_REPLICATION_PASSWORD=repl_password
+      - POSTGRESQL_PASSWORD=postgres_password
+    ports:
+      - '5435:5432'
+    volumes:
+      - 'postgresql_slave_data:/bitnami/postgresql'
+
+volumes:
+  postgresql_slave_data:
+    driver: local
