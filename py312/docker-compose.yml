@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+  python312:
+    container_name: python312
+    image: xzsean/py312
+    volumes:
+      - ./app:/app
+      - ./crontabs:/var/spool/cron/crontabs
+    # ports:
+    #   - "5060-5065:5060-5065"
+    # environment:
+    #   - http_proxy=http://127.0.0.1:7897
+    #   - https_proxy=http://127.0.0.1:7897
+    user: "root"
+    network_mode: host
+    restart: unless-stopped
+    command: sh -c "/app/start.sh && sleep infinity"
+    # command: sh -c "/app/start.sh && cron && tail -f /var/log/cron.log"
+
+
