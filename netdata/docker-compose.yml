@@ -12,6 +12,11 @@ services:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./netdata/conf:/etc/netdata
+      - ./config:/etc/netdata:rw
       - ./netdata/lib:/var/lib/netdata
       - ./netdata/cache:/var/cache/netdata
+    environment:
+      - NETDATA_ALARM_NOTIFY_INTERVAL=60
+      - NETDATA_HEALTH_ENABLED=yes
+      - NETDATA_LOG_HEALTH=yes
+

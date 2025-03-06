@@ -14,6 +14,7 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+RUN npm install -g pnpm
 # 创建工作目录
 WORKDIR /app
 
