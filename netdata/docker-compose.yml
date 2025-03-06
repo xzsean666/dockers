@@ -2,6 +2,7 @@ version: '3'
 services:
   netdata:
     image: netdata/netdata
+    hostname: test
     ports:
       - "19999:19999"
     cap_add:
@@ -11,6 +12,9 @@ services:
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
+      - /etc/passwd:/host/etc/passwd:ro
+      - /etc/group:/host/etc/group:ro
+      - /etc/os-release:/host/etc/os-release:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./config:/etc/netdata:rw
       - ./netdata/lib:/var/lib/netdata
@@ -19,4 +23,6 @@ services:
       - NETDATA_ALARM_NOTIFY_INTERVAL=60
       - NETDATA_HEALTH_ENABLED=yes
       - NETDATA_LOG_HEALTH=yes
+      - NETDATA_HOST_PROC=/host/proc
+      - NETDATA_HOST_SYS=/host/sys
 
