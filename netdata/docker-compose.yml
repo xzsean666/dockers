@@ -16,6 +16,7 @@ services:
       - /etc/group:/host/etc/group:ro
       - /etc/os-release:/host/etc/os-release:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc/net:/host/proc/net:ro
       - ./config:/etc/netdata:rw
       - ./netdata/lib:/var/lib/netdata
       - ./netdata/cache:/var/cache/netdata
@@ -25,4 +26,5 @@ services:
       - NETDATA_LOG_HEALTH=yes
       - NETDATA_HOST_PROC=/host/proc
       - NETDATA_HOST_SYS=/host/sys
+      - DOCKER_HOST_PROC_NETWORK=/host/proc/net
 
