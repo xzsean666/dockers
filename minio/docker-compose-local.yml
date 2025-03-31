@@ -5,8 +5,8 @@ services:
     image: minio/minio:latest
     container_name: minio
     ports:
-      - "5075:9000"  # API 端口
-      - "5076:9001"  # Console 端口
+      - "5078:9000"  # API 端口
+      - "5079:9001"  # Console 端口
     volumes:
       - ./data:/data  # 直接映射到当前目录下的 data 文件夹
     environment:
