@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+  gluster-node:
+    image: gluster/gluster-centos
+    user: "root"
+    privileged: true
+    network_mode: "host"  # 确保使用host网络模式
+    volumes:
+      - ./gluster-data:/data
+      - ./gluster-config:/etc/glusterfs
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro  # Add cgroup mount for systemd
+    environment:
+      - GLUSTER_NODE_NAME=${HOSTNAME:-gluster-node}
+    hostname: ${HOSTNAME:-gluster-node}
+    container_name: gluster-node
+    restart: always
+    command: ["/usr/sbin/init"]  # 确保正确初始化systemd
+    cap_add:
+      - SYS_ADMIN  # Add capability for systemd
+    # 当使用 network_mode: "host" 时，不需要显式暴露端口

@@ -1,0 +1,280 @@
+version: '3.8'
+
+services:
+  # 配置服务器 1
+  config-server-1:
+    image: mongo:6.0
+    command: mongod --configsvr --replSet configrs --port 27017 --dbpath /data/db
+    volumes:
+      - config-server-1-data:/data/db
+    networks:
+      - mongodb-network
+    deploy:
+      placement:
+        constraints:
+          - node.labels.role==mongodb
+        max_replicas_per_node: 1
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-admin123}
+
+  # 配置服务器 2
+  config-server-2:
+    image: mongo:6.0
+    command: mongod --configsvr --replSet configrs --port 27017 --dbpath /data/db
+    volumes:
+      - config-server-2-data:/data/db
+    networks:
+      - mongodb-network
+    deploy:
+      placement:
+        constraints:
+          - node.labels.role==mongodb
+        max_replicas_per_node: 1
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-admin123}
+
+  # 配置服务器 3
+  config-server-3:
+    image: mongo:6.0
+    command: mongod --configsvr --replSet configrs --port 27017 --dbpath /data/db
+    volumes:
+      - config-server-3-data:/data/db
+    networks:
+      - mongodb-network
+    deploy:
+      placement:
+        constraints:
+          - node.labels.role==mongodb
+        max_replicas_per_node: 1
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-admin123}
+
+  # 分片 1 副本 1
+  shard1-server-1:
+    image: mongo:6.0
+    command: mongod --shardsvr --replSet shard1rs --port 27017 --dbpath /data/db
+    volumes:
+      - shard1-server-1-data:/data/db
+    networks:
+      - mongodb-network
+    deploy:
+      placement:
+        constraints:
+          - node.labels.role==mongodb
+        max_replicas_per_node: 1
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-admin123}
+
+  # 分片 1 副本 2
+  shard1-server-2:
+    image: mongo:6.0
+    command: mongod --shardsvr --replSet shard1rs --port 27017 --dbpath /data/db
+    volumes:
+      - shard1-server-2-data:/data/db
+    networks:
+      - mongodb-network
+    deploy:
+      placement:
+        constraints:
+          - node.labels.role==mongodb
+        max_replicas_per_node: 1
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-admin123}
+
+  # 分片 1 副本 3
+  shard1-server-3:
+    image: mongo:6.0
+    command: mongod --shardsvr --replSet shard1rs --port 27017 --dbpath /data/db
+    volumes:
+      - shard1-server-3-data:/data/db
+    networks:
+      - mongodb-network
+    deploy:
+      placement:
+        constraints:
+          - node.labels.role==mongodb
+        max_replicas_per_node: 1
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-admin123}
+
+  # 分片 2 副本 1
+  shard2-server-1:
+    image: mongo:6.0
+    command: mongod --shardsvr --replSet shard2rs --port 27017 --dbpath /data/db
+    volumes:
+      - shard2-server-1-data:/data/db
+    networks:
+      - mongodb-network
+    deploy:
+      placement:
+        constraints:
+          - node.labels.role==mongodb
+        max_replicas_per_node: 1
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-admin123}
+
+  # 分片 2 副本 2
+  shard2-server-2:
+    image: mongo:6.0
+    command: mongod --shardsvr --replSet shard2rs --port 27017 --dbpath /data/db
+    volumes:
+      - shard2-server-2-data:/data/db
+    networks:
+      - mongodb-network
+    deploy:
+      placement:
+        constraints:
+          - node.labels.role==mongodb
+        max_replicas_per_node: 1
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-admin123}
+
+  # 分片 2 副本 3
+  shard2-server-3:
+    image: mongo:6.0
+    command: mongod --shardsvr --replSet shard2rs --port 27017 --dbpath /data/db
+    volumes:
+      - shard2-server-3-data:/data/db
+    networks:
+      - mongodb-network
+    deploy:
+      placement:
+        constraints:
+          - node.labels.role==mongodb
+        max_replicas_per_node: 1
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-admin123}
+
+  # Mongos 路由服务器 1
+  mongos-router-1:
+    image: mongo:6.0
+    command: mongos --configdb configrs/config-server-1:27017,config-server-2:27017,config-server-3:27017 --port 27017 --bind_ip_all
+    ports:
+      - "27017:27017"
+    networks:
+      - mongodb-network
+    depends_on:
+      - config-server-1
+      - config-server-2
+      - config-server-3
+      - shard1-server-1
+      - shard1-server-2
+      - shard1-server-3
+      - shard2-server-1
+      - shard2-server-2
+      - shard2-server-3
+    deploy:
+      placement:
+        constraints:
+          - node.labels.role==mongodb
+        max_replicas_per_node: 1
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  # Mongos 路由服务器 2
+  mongos-router-2:
+    image: mongo:6.0
+    command: mongos --configdb configrs/config-server-1:27017,config-server-2:27017,config-server-3:27017 --port 27017 --bind_ip_all
+    ports:
+      - "30701:27017"
+    networks:
+      - mongodb-network
+    depends_on:
+      - config-server-1
+      - config-server-2
+      - config-server-3
+      - shard1-server-1
+      - shard1-server-2
+      - shard1-server-3
+      - shard2-server-1
+      - shard2-server-2
+      - shard2-server-3
+    deploy:
+      placement:
+        constraints:
+          - node.labels.role==mongodb
+        max_replicas_per_node: 1
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  # 初始化服务
+  mongo-init:
+    image: mongo:6.0
+    volumes:
+      - ./scripts:/scripts
+    networks:
+      - mongodb-network
+    entrypoint: ["bash", "/scripts/init-mongodb.sh"]
+    depends_on:
+      - mongos-router-1
+      - mongos-router-2
+      - config-server-1
+      - config-server-2
+      - config-server-3
+      - shard1-server-1
+      - shard1-server-2
+      - shard1-server-3
+      - shard2-server-1
+      - shard2-server-2
+      - shard2-server-3
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+      placement:
+        constraints:
+          - node.labels.role==mongodb
+
+networks:
+  mongodb-network:
+    driver: overlay
+    attachable: true
+
+volumes:
+  config-server-1-data:
+  config-server-2-data:
+  config-server-3-data:
+  shard1-server-1-data:
+  shard1-server-2-data:
+  shard1-server-3-data:
+  shard2-server-1-data:
+  shard2-server-2-data:
+  shard2-server-3-data:

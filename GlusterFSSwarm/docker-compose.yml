@@ -1,0 +1,61 @@
+version: "3.7"
+services:
+  glusterfs-server:
+    image: gluster/gluster-centos:latest
+    volumes:
+      - /data/gluster/brick:/data/brick
+    networks:
+      - gluster-net
+    command: >
+      bash -c "mkdir -p /var/run/gluster && 
+      mkdir -p /var/log/glusterfs &&
+      /usr/sbin/glusterd -p /var/run/glusterd.pid --log-level INFO --no-daemon"
+    deploy:
+      mode: global
+      restart_policy:
+        condition: any
+      placement:
+        constraints:
+          - node.labels.gluster-storage == true
+    privileged: true
+    cap_add:
+      - SYS_ADMIN
+      - NET_ADMIN
+    security_opt:
+      - seccomp:unconfined
+    sysctls:
+      - net.core.somaxconn=65535
+      - net.ipv4.ip_local_port_range=1024 65535
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep glusterd || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # 简化的设置服务
+  gluster-setup:
+    image: gluster/gluster-centos:latest
+    networks:
+      - gluster-net
+    volumes:
+      - ./scripts:/scripts
+    command: "/scripts/setup-gluster.sh"
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+      placement:
+        constraints:
+          - node.role == manager
+    depends_on:
+      - glusterfs-server
+
+volumes:
+  gluster_brick:
+    driver: local
+
+networks:
+  gluster-net:
+    driver: overlay
+    attachable: true
