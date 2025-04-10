@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    restart: always
+    hostname: node1
+    volumes:
+      - /mnt/minio:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server http://192.168.1.101/data http://192.168.1.102/data http://192.168.1.103/data http://192.168.1.104/data --console-address :9001

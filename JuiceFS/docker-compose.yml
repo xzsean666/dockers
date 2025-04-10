@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  juicefs:
+    image: juicedata/juicefs
+    container_name: juicefs
+    volumes:
+      - ./data:/data
+      - ./config:/root/.juicefs
+    env_file:
+      - .env
+    command: mount /data
+    privileged: true
+    restart: unless-stopped
