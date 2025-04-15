@@ -4,11 +4,13 @@ services:
   juicefs:
     image: juicedata/juicefs
     container_name: juicefs
+    user: root
     volumes:
-      - ./data:/data
+      - ${JFS_MOUNT_POINT}:/data
       - ./config:/root/.juicefs
+      - ${JFS_CACHE_DIR}:/var/jfsCache
     env_file:
       - .env
-    command: mount /data
+    command: mount --cache-dir /var/jfsCache --cache-size ${JFS_CACHE_SIZE} /data
     privileged: true
     restart: unless-stopped

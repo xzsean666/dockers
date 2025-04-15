@@ -1,0 +1,60 @@
+serverAddr = "31.58.137.32"
+serverPort = 5079
+auth.token = "sean777_your_strong_token_here"
+
+# 端口转发配置
+[[proxies]]
+name = "tcp-5070"
+type = "tcp"
+localPort = 5070
+remotePort = 5700
+[[proxies]]
+name = "tcp-5071"
+type = "tcp"
+localPort = 5071
+remotePort = 5701
+[[proxies]]
+name = "tcp-5072"
+type = "tcp"
+localPort = 5072
+remotePort = 5702
+[[proxies]]
+name = "tcp-5073"
+type = "tcp"
+localPort = 5073
+remotePort = 5703
+[[proxies]]
+name = "tcp-5074"
+type = "tcp"
+localPort = 5074
+remotePort = 5704
+[[proxies]]
+name = "tcp-5075"
+type = "tcp"
+localPort = 5075
+remotePort = 5705
+[[proxies]]
+name = "tcp-5076"
+type = "tcp"
+localPort = 5076
+remotePort = 5706
+[[proxies]]
+name = "tcp-5077"
+type = "tcp"
+localPort = 5077
+remotePort = 5707
+[[proxies]]
+name = "tcp-5078"
+type = "tcp"
+localPort = 5078
+remotePort = 5708
+[[proxies]]
+name = "tcp-5079"
+type = "tcp"
+localPort = 5079
+remotePort = 5709
+[[proxies]]
+name = "tcp-5080"
+type = "tcp"
+localPort = 5080
+remotePort = 5710

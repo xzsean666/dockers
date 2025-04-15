@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+  postgresql-master:
+    image: 'bitnami/postgresql:16'
+    container_name: postgresql-master
+    restart: always
+    env_file: .env
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=$POSTGRESQL_REPLICATION_MODE
+      - POSTGRESQL_DATABASE=$POSTGRESQL_DATABASE
+      - POSTGRESQL_USERNAME=$POSTGRESQL_USERNAME
+      - POSTGRESQL_PASSWORD=$POSTGRESQL_PASSWORD
+      - POSTGRESQL_REPLICATION_USER=$POSTGRESQL_REPLICATION_USER
+      - POSTGRESQL_REPLICATION_PASSWORD=$POSTGRESQL_REPLICATION_PASSWORD
+    ports:
+      - '5432:5432'
+    volumes:
+      - './data:/bitnami/postgresql'
+
+
