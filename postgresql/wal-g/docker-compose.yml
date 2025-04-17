@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  postgresql-master:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: postgresql-master
+    restart: always
+    env_file: .env
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=${POSTGRESQL_REPLICATION_MODE}
+      - POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE}
+      - POSTGRESQL_USERNAME=${POSTGRESQL_USERNAME}
+      - POSTGRESQL_PASSWORD=${POSTGRESQL_PASSWORD}
+      - POSTGRESQL_REPLICATION_USER=${POSTGRESQL_REPLICATION_USER}
+      - POSTGRESQL_REPLICATION_PASSWORD=${POSTGRESQL_REPLICATION_PASSWORD}
+      # WAL-G configuration
+      - WALG_S3_PREFIX=${WALG_S3_PREFIX}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      # Restoration configuration
+      - RESTORE_FROM_BACKUP=${RESTORE_FROM_BACKUP:-false}
+      - BACKUP_NAME=${BACKUP_NAME:-LATEST}
+    ports:
+      - '${PORT}:5432'
+    volumes:
+      - postgres_data:/bitnami/postgresql
+      - ./wal-g.conf:/etc/wal-g/wal-g.conf:ro
+    command: >
+      bash -c "
+        if [ \"$RESTORE_FROM_BACKUP\" = \"true\" ] || [ ! -f /bitnami/postgresql/data/PG_VERSION ]; then
+          echo 'Starting restoration from backup: $BACKUP_NAME'
+          rm -rf /bitnami/postgresql/data/*
+          wal-g backup-fetch /bitnami/postgresql/data $BACKUP_NAME
+          echo 'Restoration completed'
+        fi
+        /opt/bitnami/scripts/postgresql/entrypoint.sh /opt/bitnami/scripts/postgresql/run.sh
+      "
+
+volumes:
+  postgres_data:
