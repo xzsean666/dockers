@@ -1,0 +1,10 @@
+version: '3'
+services:
+  shadowsocks:
+    image: shadowsocks/shadowsocks-libev
+    container_name: ss-server
+    network_mode: host
+    restart: always
+    volumes:
+      - ./config:/etc/shadowsocks-libev
+    command: ss-server -c /etc/shadowsocks-libev/config.json 

@@ -1,0 +1,16 @@
+proxies:
+  - name: "Shadowsocks"
+    type: ss
+    server: 你的服务器IP
+    port: 8388
+    cipher: chacha20-ietf-poly1305
+    password: 你的密码
+
+proxy-groups:
+  - name: "PROXY"
+    type: select
+    proxies:
+      - "Shadowsocks"
+
+rules:
+  - MATCH,PROXY
