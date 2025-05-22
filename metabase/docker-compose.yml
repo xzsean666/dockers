@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  metabase:
+    image: metabase/metabase:latest
+    container_name: metabase
+    network_mode: "host"
+    environment:
+      MB_DB_FILE: /metabase-data/metabase.db
+      MB_JETTY_PORT: 13000 # Metabase 将监听宿主机的13000端口
+    volumes:
+      - ./metabase-data:/metabase-data
+    restart: unless-stopped
+
+
