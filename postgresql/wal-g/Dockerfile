@@ -1,11 +1,21 @@
 FROM bitnami/postgresql:16
 
 # Install required packages
-RUN install_packages wget
+RUN install_packages wget ca-certificates
 
-# Download and install WAL-G
-RUN wget https://github.com/wal-g/wal-g/releases/download/v2.0.1/wal-g-pg-ubuntu-latest-amd64 -O /usr/local/bin/wal-g \
-    && chmod +x /usr/local/bin/wal-g
+# Download and install WAL-G with checksum verification
+RUN WALG_VERSION=v2.0.1 && \
+    WALG_BINARY=wal-g-pg-ubuntu-latest-amd64 && \
+    WALG_URL=https://github.com/wal-g/wal-g/releases/download/${WALG_VERSION}/${WALG_BINARY} && \
+    WALG_CHECKSUM_URL=https://github.com/wal-g/wal-g/releases/download/${WALG_VERSION}/${WALG_BINARY}.sha256 && \
+    cd /tmp && \
+    wget ${WALG_URL} -O wal-g && \
+    wget ${WALG_CHECKSUM_URL} -O wal-g.sha256 && \
+    sha256sum -c wal-g.sha256 && \
+    mv wal-g /usr/local/bin/wal-g && \
+    chmod +x /usr/local/bin/wal-g && \
+    rm -f /tmp/wal-g* && \
+    wal-g --version
 
 # Create directory for WAL-G configuration
 RUN mkdir -p /etc/wal-g

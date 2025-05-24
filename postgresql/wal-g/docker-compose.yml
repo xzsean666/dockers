@@ -20,24 +20,58 @@ services:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_REGION=${AWS_REGION}
+      # B2特定配置 (如果使用Backblaze B2)
+      - AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL}
+      - AWS_S3_FORCE_PATH_STYLE=${AWS_S3_FORCE_PATH_STYLE:-true}
+      - WALG_S3_ENDPOINT=${WALG_S3_ENDPOINT}
+      - WALG_UPLOAD_CONCURRENCY=${WALG_UPLOAD_CONCURRENCY:-4}
+      - WALG_DOWNLOAD_CONCURRENCY=${WALG_DOWNLOAD_CONCURRENCY:-4}
       # Restoration configuration
       - RESTORE_FROM_BACKUP=${RESTORE_FROM_BACKUP:-false}
       - BACKUP_NAME=${BACKUP_NAME:-LATEST}
     ports:
       - '${PORT}:5432'
     volumes:
-      - postgres_data:/bitnami/postgresql
+      - ./data:/bitnami/postgresql
       - ./wal-g.conf:/etc/wal-g/wal-g.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRESQL_USERNAME} -d ${POSTGRESQL_DATABASE}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - postgresql-network
     command: >
       bash -c "
+        set -e
         if [ \"$RESTORE_FROM_BACKUP\" = \"true\" ] || [ ! -f /bitnami/postgresql/data/PG_VERSION ]; then
           echo 'Starting restoration from backup: $BACKUP_NAME'
-          rm -rf /bitnami/postgresql/data/*
-          wal-g backup-fetch /bitnami/postgresql/data $BACKUP_NAME
-          echo 'Restoration completed'
+          # Create backup of existing data before deletion
+          if [ -d /bitnami/postgresql/data ] && [ \"$(ls -A /bitnami/postgresql/data)\" ]; then
+            echo 'Backing up existing data...'
+            mv /bitnami/postgresql/data /bitnami/postgresql/data.backup.$(date +%Y%m%d_%H%M%S)
+          fi
+          mkdir -p /bitnami/postgresql/data
+          # Attempt restoration with error handling
+          if wal-g backup-fetch /bitnami/postgresql/data $BACKUP_NAME; then
+            echo 'Restoration completed successfully'
+            # Clean up backup if restoration succeeded
+            rm -rf /bitnami/postgresql/data.backup.* 2>/dev/null || true
+          else
+            echo 'Restoration failed, attempting to restore from backup'
+            rm -rf /bitnami/postgresql/data
+            if [ -d /bitnami/postgresql/data.backup.* ]; then
+              mv /bitnami/postgresql/data.backup.* /bitnami/postgresql/data
+            fi
+            exit 1
+          fi
         fi
         /opt/bitnami/scripts/postgresql/entrypoint.sh /opt/bitnami/scripts/postgresql/run.sh
       "
 
-volumes:
-  postgres_data:
+networks:
+  postgresql-network:
+    driver: bridge
+    name: postgresql-network
+
