@@ -1,0 +1,47 @@
+FROM ubuntu:22.04
+
+# Set frontend to noninteractive to prevent prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install required packages
+RUN apt-get update && apt-get install -y \
+    wget \
+    ca-certificates \
+    postgresql-client-14 \
+    cron \
+    curl \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download and install WAL-G with checksum verification
+RUN WALG_VERSION=v3.0.7 && \
+    WALG_BINARY=wal-g-pg-ubuntu-22.04-amd64 && \
+    WALG_URL=https://github.com/wal-g/wal-g/releases/download/${WALG_VERSION}/${WALG_BINARY} && \
+    WALG_CHECKSUM_URL=https://github.com/wal-g/wal-g/releases/download/${WALG_VERSION}/${WALG_BINARY}.sha256 && \
+    cd /tmp && \
+    wget ${WALG_URL} -O ${WALG_BINARY} && \
+    wget ${WALG_CHECKSUM_URL} -O ${WALG_BINARY}.sha256 && \
+    sha256sum -c ${WALG_BINARY}.sha256 && \
+    mv ${WALG_BINARY} /usr/local/bin/wal-g && \
+    chmod +x /usr/local/bin/wal-g && \
+    rm -f /tmp/wal-g* && \
+    wal-g --version
+
+# Create working directories
+RUN mkdir -p /scripts /postgresql-data /shared/wal-archive
+
+# Copy scripts
+COPY scripts/ /scripts/
+RUN chmod +x /scripts/*.sh
+
+# Set timezone
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# Create cron directory for logging
+RUN mkdir -p /var/log/cron
+
+WORKDIR /scripts
+
+# Default command
+CMD ["/scripts/entrypoint.sh"] 

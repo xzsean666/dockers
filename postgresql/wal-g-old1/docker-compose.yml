@@ -1,0 +1,107 @@
+version: '3.8'
+
+services:
+  postgresql:
+    image: 'bitnami/postgresql:16'
+    container_name: ${CONTAINER_NAME}
+    restart: always
+    env_file: .env
+    user: root
+    environment:
+      - POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE}
+      - POSTGRESQL_USERNAME=${POSTGRESQL_USERNAME}
+      - POSTGRESQL_PASSWORD=${POSTGRESQL_PASSWORD}
+      - POSTGRESQL_REPLICATION_USER=${POSTGRESQL_REPLICATION_USER}
+      - POSTGRESQL_REPLICATION_PASSWORD=${POSTGRESQL_REPLICATION_PASSWORD}
+      - POSTGRESQL_POSTGRES_PASSWORD=${POSTGRESQL_PASSWORD}
+      # WAL archiving configuration
+      - POSTGRESQL_WAL_LEVEL=replica
+      - POSTGRESQL_MAX_WAL_SENDERS=3
+      - POSTGRESQL_CHECKPOINT_SEGMENTS=32
+      - POSTGRESQL_CHECKPOINT_COMPLETION_TARGET=0.9
+      - POSTGRESQL_ARCHIVE_MODE=on
+      - POSTGRESQL_ARCHIVE_COMMAND=test ! -f /shared/wal-archive/%f && cp %p /shared/wal-archive/%f
+      # WAL-G S3 configuration for backup commands
+      - WALG_S3_PREFIX=${WALG_S3_PREFIX}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL}
+      - AWS_S3_FORCE_PATH_STYLE=${AWS_S3_FORCE_PATH_STYLE:-true}
+    ports:
+      - '${PORT}:5432'
+    volumes:
+      - ./data:/bitnami/postgresql
+      - wal-archive:/shared/wal-archive
+      - postgresql-socket:/tmp
+      - walg-binaries:/usr/local/bin-ext  # 挂载wal-g二进制文件
+      - ./scripts:/shared/scripts:ro      # 挂载脚本目录
+    networks:
+      - postgresql-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRESQL_USERNAME} -d ${POSTGRESQL_DATABASE}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      wal-g:
+        condition: service_started
+
+  wal-g:
+    build:
+      context: .
+      dockerfile: Dockerfile.wal-g
+    container_name: ${CONTAINER_NAME}-wal-g
+    restart: always
+    env_file: .env
+    environment:
+      # PostgreSQL connection settings
+      - PGHOST=postgresql
+      - PGPORT=5432
+      - PGUSER=postgres
+      - PGPASSWORD=${POSTGRESQL_PASSWORD}
+      - PGDATABASE=${POSTGRESQL_DATABASE}
+      # WAL-G S3 configuration
+      - WALG_S3_PREFIX=${WALG_S3_PREFIX}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL}
+      - AWS_S3_FORCE_PATH_STYLE=${AWS_S3_FORCE_PATH_STYLE:-true}
+      # WAL-G specific settings
+      - WALG_COMPRESSION_METHOD=lz4
+      - WALG_UPLOAD_CONCURRENCY=${WALG_UPLOAD_CONCURRENCY:-4}
+      - WALG_DOWNLOAD_CONCURRENCY=${WALG_DOWNLOAD_CONCURRENCY:-4}
+      - WALG_DISK_RATE_LIMIT=${WALG_DISK_RATE_LIMIT:-10485760}
+      - WALG_NETWORK_RATE_LIMIT=${WALG_NETWORK_RATE_LIMIT:-10485760}
+      - WALG_PREVENT_WAL_OVERWRITE=true
+      # Backup schedule settings
+      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-0 2 * * *}
+      - RETENTION_DAYS=${RETENTION_DAYS:-7}
+    volumes:
+      # Mount the PostgreSQL data volume with write access for restores
+      - ./data:/bitnami/postgresql
+      - wal-archive:/shared/wal-archive
+      - postgresql-socket:/tmp
+      - ./scripts:/scripts
+      - walg-binaries:/usr/local/bin-shared  # 共享wal-g二进制文件卷
+    networks:
+      - postgresql-network
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    command: ["/scripts/entrypoint.sh"]
+
+volumes:
+  wal-archive:
+    driver: local
+  postgresql-socket:
+    driver: local
+  walg-binaries:
+    driver: local
+
+networks:
+  postgresql-network:
+    driver: bridge
+    name: postgresql-wal-g-network 

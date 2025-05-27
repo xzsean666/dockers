@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+  barman:
+    image: ghcr.io/bitnami/barman:2
+    container_name: ${CONTAINER_NAME}-barman
+    restart: always
+    env_file: .env
+    environment:
+      - BARMAN_POSTGRESQL_HOST=${BARMAN_POSTGRESQL_HOST}
+      - BARMAN_POSTGRESQL_PORT=${BARMAN_POSTGRESQL_PORT}
+      - BARMAN_POSTGRESQL_USER=${BARMAN_POSTGRESQL_USER}
+      - BARMAN_POSTGRESQL_PASSWORD=${BARMAN_POSTGRESQL_PASSWORD}
+      - BARMAN_POSTGRESQL_DATABASE=${BARMAN_POSTGRESQL_DATABASE}
+      - BARMAN_SERVER_NAME=${CONTAINER_NAME}
+      - BARMAN_CONF=/etc/barman/barman.conf # Default barman config location
+      - BARMAN_DATA=/barman_data
+      # Add any other specific barman env vars here, e.g., compression
+    volumes:
+      - ./barman_conf:/etc/barman
+      - ./barman_data:/barman_data

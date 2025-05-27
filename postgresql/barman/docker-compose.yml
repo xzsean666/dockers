@@ -1,0 +1,49 @@
+version: '3'
+
+services:
+  postgresql-master:
+    image: 'bitnami/postgresql:17'
+    container_name: ${CONTAINER_NAME}
+    restart: always
+    env_file: .env
+    user: root
+    environment:
+      - POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE}
+      - POSTGRESQL_USERNAME=${POSTGRESQL_USERNAME}
+      - POSTGRESQL_PASSWORD=${POSTGRESQL_PASSWORD}
+      - POSTGRESQL_REPLICATION_USER=${POSTGRESQL_REPLICATION_USER}
+      - POSTGRESQL_REPLICATION_PASSWORD=${POSTGRESQL_REPLICATION_PASSWORD}
+      - POSTGRESQL_POSTGRES_PASSWORD=${POSTGRESQL_PASSWORD}
+    ports:
+      - '${PORT}:5432'
+    volumes:
+      - './data:/bitnami/postgresql'
+    networks:
+      - postgres_network
+
+  barman:
+    image: ghcr.io/bitnami/barman:2
+    container_name: ${CONTAINER_NAME}-barman
+    restart: always
+    env_file: .env
+    environment:
+      - BARMAN_POSTGRESQL_HOST=postgresql-master
+      - BARMAN_POSTGRESQL_PORT=5432
+      - BARMAN_POSTGRESQL_USER=${POSTGRESQL_REPLICATION_USER}
+      - BARMAN_POSTGRESQL_PASSWORD=${POSTGRESQL_REPLICATION_PASSWORD}
+      - BARMAN_POSTGRESQL_DATABASE=postgres # Or your specific database if needed
+      - BARMAN_SERVER_NAME=${CONTAINER_NAME}
+      - BARMAN_CONF=/etc/barman/barman.conf # Default barman config location
+      - BARMAN_DATA=/barman_data
+      # Add any other specific barman env vars here, e.g., compression
+    volumes:
+      - ./barman_conf:/etc/barman
+      - ./barman_data:/barman_data
+    networks:
+      - postgres_network
+
+networks:
+  postgres_network:
+    driver: bridge
+
+

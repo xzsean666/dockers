@@ -16,24 +16,22 @@ services:
       - POSTGRESQL_REPLICATION_PASSWORD=${POSTGRESQL_REPLICATION_PASSWORD}
       - POSTGRESQL_POSTGRES_PASSWORD=${POSTGRESQL_PASSWORD}
       
+      # WAL-G S3 配置 - 重要：这些必须传递给容器
+      - WALG_S3_PREFIX=${WALG_S3_PREFIX}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL}
+      - AWS_S3_FORCE_PATH_STYLE=${AWS_S3_FORCE_PATH_STYLE}
+      
       # WAL-G 性能配置
       - WALG_UPLOAD_CONCURRENCY=${WALG_UPLOAD_CONCURRENCY}
       - WALG_DOWNLOAD_CONCURRENCY=${WALG_DOWNLOAD_CONCURRENCY}
       - WALG_DISK_RATE_LIMIT=${WALG_DISK_RATE_LIMIT}
       - WALG_NETWORK_RATE_LIMIT=${WALG_NETWORK_RATE_LIMIT}
-      
-      # WAL-G Backup Schedule and Retention
-      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE}
-      - RETENTION_DAYS=${RETENTION_DAYS}
-      
-
     ports:
       - '${PORT}:5432'
     volumes:
       - './data:/bitnami/postgresql'
-      - 'local_wal_g_backups:/bitnami/postgresql/local_wal_g_backups'
-
-volumes:
-  local_wal_g_backups:
 
 

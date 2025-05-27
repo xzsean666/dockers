@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Source environment variables from .env file if it exists
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | xargs)
+fi
+
 # 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -36,12 +41,6 @@ check_dependencies() {
     check_command "docker-compose"
 }
 
-# 获取容器名称
-get_container_name() {
-    local container_name=$(grep -A 1 "container_name:" docker-compose.yml 2>/dev/null | grep -v "container_name:" | tr -d '[:space:]' || echo "")
-    echo "${container_name:-postgresql-master}"
-}
-
 # 检查容器是否运行
 check_container_running() {
     if ! docker ps --filter "name=$CONTAINER_NAME" --filter "status=running" | grep -q "$CONTAINER_NAME"; then
@@ -51,8 +50,17 @@ check_container_running() {
     return 0
 }
 
-# 设置容器名称变量
-CONTAINER_NAME=$(get_container_name)
+# Check if CONTAINER_NAME is set, otherwise fallback or error
+if [ -z "${CONTAINER_NAME:-}" ]; then
+    # Fallback to parsing docker-compose.yml if .env doesn't set it
+    CONTAINER_NAME=$(grep "container_name:" docker-compose.yml 2>/dev/null | cut -d ":" -f 2 | tr -d '[:space:]')
+    if [ -z "${CONTAINER_NAME:-}" ]; then
+        log_error "CONTAINER_NAME environment variable is not set and could not be determined from docker-compose.yml."\
+        log_error "Please set CONTAINER_NAME in your .env file or define it before running the script."
+        exit 1
+    fi
+    log_warn "CONTAINER_NAME not set in .env, falling back to parsing docker-compose.yml (value: $CONTAINER_NAME)"
+fi
 
 # 检查是否以root权限运行
 if [ "$EUID" -ne 0 ]; then 
@@ -80,7 +88,7 @@ show_menu() {
 list_backups() {
     log_info "正在列出所有备份..."
     if check_container_running; then
-        if docker exec "$CONTAINER_NAME" wal-g backup-list; then
+        if docker exec "$CONTAINER_NAME" bash -c "wal-g backup-list"; then
             log_info "备份列表获取成功"
         else
             log_error "获取备份列表失败"
@@ -97,18 +105,18 @@ create_backup() {
     fi
     
     # 检查WAL-G配置
-    if ! docker exec "$CONTAINER_NAME" wal-g --help > /dev/null 2>&1; then
+    if ! docker exec "$CONTAINER_NAME" bash -c "wal-g --help" > /dev/null 2>&1; then
         log_error "WAL-G未正确安装或配置"
         return 1
     fi
     
     # 执行备份
     log_info "开始执行备份，这可能需要一些时间..."
-    if docker exec "$CONTAINER_NAME" wal-g backup-push /bitnami/postgresql/data; then
+    if docker exec "$CONTAINER_NAME" bash -c "wal-g backup-push /bitnami/postgresql/data"; then
         log_info "备份创建成功！"
         # 显示备份信息
         log_info "最新备份列表："
-        docker exec "$CONTAINER_NAME" wal-g backup-list | tail -5
+        docker exec "$CONTAINER_NAME" bash -c "wal-g backup-list" | tail -5
     else
         log_error "备份创建失败！请检查："
         log_error "1. S3凭证配置是否正确"
@@ -176,7 +184,13 @@ restore_to_time() {
     docker-compose stop "$CONTAINER_NAME"
     
     log_info "清理数据目录..."
-    docker-compose run --rm "$CONTAINER_NAME" rm -rf /bitnami/postgresql/data/*
+    if docker-compose run --rm "$CONTAINER_NAME" bash -c "rm -rf /bitnami/postgresql/data/*"; then
+        log_info "清理数据目录成功"
+    else
+        log_error "清理数据目录失败！"
+        docker-compose start "$CONTAINER_NAME"
+        return 1
+    fi
     
     log_info "执行时间点恢复..."
     if docker-compose run --rm "$CONTAINER_NAME" bash -c "
@@ -185,7 +199,7 @@ restore_to_time() {
         echo \"restore_command = 'wal-g wal-fetch %f %p'\" > /bitnami/postgresql/data/recovery.conf
         echo \"recovery_target_time = '$target_time'\" >> /bitnami/postgresql/data/recovery.conf
         echo \"recovery_target_action = 'promote'\" >> /bitnami/postgresql/data/recovery.conf
-        echo \"Point-in-time recovery configured\"
+        echo "Point-in-time recovery configured"
     "; then
         log_info "启动容器..."
         docker-compose start "$CONTAINER_NAME"
@@ -220,7 +234,7 @@ delete_old_backups() {
         return 0
     fi
 
-    if docker exec "$CONTAINER_NAME" wal-g delete retain FULL "$retain_count"; then
+    if docker exec "$CONTAINER_NAME" bash -c "wal-g delete retain FULL $retain_count"; then
         log_info "删除完成！"
     else
         log_error "删除失败！"
@@ -244,7 +258,7 @@ check_status() {
         fi
         
         # 检查WAL-G
-        if docker exec "$CONTAINER_NAME" wal-g --version; then
+        if docker exec "$CONTAINER_NAME" bash -c "wal-g --version"; then
             log_info "WAL-G已安装"
         else
             log_warn "WAL-G未正确安装"
