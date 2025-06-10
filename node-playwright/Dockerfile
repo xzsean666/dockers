@@ -47,11 +47,12 @@ ENV DISPLAY=:99
 # 安装 pnpm
 RUN npm install -g pnpm
 
-# 安装 playwright
-RUN pnpm dlx playwright@latest install --with-deps
-
 # 创建工作目录
 WORKDIR /app
+
+# 使用pnpm安装playwright，然后用npx下载浏览器
+RUN pnpm add -g playwright@latest && \
+    npx playwright install --with-deps
 
 # 复制crontab管理脚本并设置执行权限
 COPY manage-crontab.sh /usr/local/bin/manage-crontab

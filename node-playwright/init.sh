@@ -84,6 +84,9 @@ chmod +x app/bot.sh
 cp GSM.sh app/GSM.sh
 chmod +x app/GSM.sh
 
+cp pm2-bot.sh app/pm2-bot.sh
+chmod +x app/pm2-bot.sh
+
 echo "Directory structure and files created successfully!"
 echo "Crontab entries have been added successfully!"
 
