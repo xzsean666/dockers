@@ -2,7 +2,7 @@ version: '3'
 
 services:
   postgresql-master:
-    image: 'bitnami/postgresql:latest'
+    image: 'bitnami/postgresql:17.5.0'
     container_name: postgresql-master
     environment:
       - POSTGRESQL_REPLICATION_MODE=master
@@ -17,7 +17,7 @@ services:
       - 'data0:/bitnami/postgresql'
       
   postgresql-slave-1:
-    image: 'bitnami/postgresql:latest'
+    image: 'bitnami/postgresql:17.5.0'
     container_name: postgresql-slave-1
     depends_on:
       - postgresql-master

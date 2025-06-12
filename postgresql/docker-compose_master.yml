@@ -17,6 +17,6 @@ services:
     ports:
       - '${PORT}:5432'
     volumes:
-      - './data:/bitnami/postgresql'
+      - './data:/bitnami/postgresql/data'
 
 
