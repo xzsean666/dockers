@@ -1,0 +1,118 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Slave (本地从数据库)
+  postgresql-slave:
+    image: 'bitnami/postgresql:17.5.0'
+    container_name: ${POSTGRESQL_SLAVE_CONTAINER_NAME}
+    restart: always
+    user: root
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=slave
+      - POSTGRESQL_MASTER_HOST=${POSTGRESQL_MASTER_HOST}
+      - POSTGRESQL_MASTER_PORT_NUMBER=${POSTGRESQL_MASTER_PORT_NUMBER}
+      - POSTGRESQL_REPLICATION_USER=${POSTGRESQL_REPLICATION_USER}
+      - POSTGRESQL_REPLICATION_PASSWORD=${POSTGRESQL_REPLICATION_PASSWORD}
+      - POSTGRESQL_PASSWORD=${POSTGRESQL_PASSWORD}
+      - POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE}
+      - POSTGRESQL_USERNAME=${POSTGRESQL_USERNAME}
+    volumes:
+      - './data:/bitnami/postgresql/data'
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${POSTGRESQL_USERNAME} -d ${POSTGRESQL_DATABASE}',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - pgpool_network
+
+  # Pgpool (连接池和读写分离)
+  pgpool:
+    image: bitnami/pgpool:4
+    container_name: ${PGPOOL_CONTAINER_NAME}
+    depends_on:
+      postgresql-slave:
+        condition: service_healthy
+    ports:
+      - '${PGPOOL_PORT}:5432'
+
+    environment:
+      # 配置后端数据库节点：主库(远程,写) + 从库(本地,读)
+      - PGPOOL_BACKEND_NODES=0:${POSTGRESQL_MASTER_HOST}:${POSTGRESQL_MASTER_PORT_NUMBER}:1::ALLOW_TO_FAILOVER:primary,1:${POSTGRESQL_SLAVE_CONTAINER_NAME}:5432:1::DISALLOW_TO_FAILOVER:replica
+
+      # 数据库连接配置
+      - PGPOOL_SR_CHECK_USER=${POSTGRESQL_USERNAME}
+      - PGPOOL_SR_CHECK_PASSWORD=${POSTGRESQL_PASSWORD}
+      - PGPOOL_POSTGRES_USERNAME=${POSTGRESQL_USERNAME}
+      - PGPOOL_POSTGRES_PASSWORD=${POSTGRESQL_PASSWORD}
+
+      # Pgpool管理员配置
+      - PGPOOL_ADMIN_USERNAME=${PGPOOL_ADMIN_USERNAME}
+      - PGPOOL_ADMIN_PASSWORD=${PGPOOL_ADMIN_PASSWORD}
+
+      # 启用读写分离和负载均衡
+
+      - PGPOOL_ENABLE_LOAD_BALANCING=yes
+      - PGPOOL_LOAD_BALANCE_MODE=on
+
+      # 写操作路由到主库的SQL模式
+      - PGPOOL_PRIMARY_ROUTING_QUERY_PATTERN_LIST=INSERT.*;UPDATE.*;DELETE.*;COPY.*FROM.*;TRUNCATE.*;CREATE.*;DROP.*;ALTER.*;GRANT.*;REVOKE.*;SELECT.*FOR.*UPDATE.*;SELECT.*FOR.*SHARE.*;SELECT.*INTO.*;SELECT.*NEXTVAL.*;SELECT.*SETVAL.*;SELECT.*CURRVAL.*;SELECT.*LASTVAL
+
+      # 流复制检查配置
+      - PGPOOL_SR_CHECK_PERIOD=${PGPOOL_SR_CHECK_PERIOD}
+      - PGPOOL_SR_CHECK_DATABASE=${POSTGRESQL_DATABASE}
+      - PGPOOL_DELAY_THRESHOLD=${PGPOOL_DELAY_THRESHOLD}
+
+      # 健康检查配置
+      - PGPOOL_HEALTH_CHECK_PERIOD=${PGPOOL_HEALTH_CHECK_PERIOD}
+      - PGPOOL_HEALTH_CHECK_TIMEOUT=${PGPOOL_HEALTH_CHECK_TIMEOUT}
+      - PGPOOL_HEALTH_CHECK_USER=${POSTGRESQL_USERNAME}
+      - PGPOOL_HEALTH_CHECK_PASSWORD=${POSTGRESQL_PASSWORD}
+      - PGPOOL_HEALTH_CHECK_DATABASE=${POSTGRESQL_DATABASE}
+      - PGPOOL_HEALTH_CHECK_MAX_RETRIES=${PGPOOL_HEALTH_CHECK_MAX_RETRIES}
+      - PGPOOL_HEALTH_CHECK_RETRY_DELAY=${PGPOOL_HEALTH_CHECK_RETRY_DELAY}
+
+      # 读写分离函数配置
+      - PGPOOL_WRITE_FUNCTION_LIST=nextval,setval,currval,lastval,lo_creat,lo_create,lo_unlink,lo_import,lo_export
+      - PGPOOL_READ_ONLY_FUNCTION_LIST=
+
+      # 连接池配置
+      - PGPOOL_CHILD_LIFE_TIME=${PGPOOL_CHILD_LIFE_TIME}
+      - PGPOOL_CHILD_MAX_CONNECTIONS=${PGPOOL_CHILD_MAX_CONNECTIONS}
+      - PGPOOL_CONNECTION_LIFE_TIME=${PGPOOL_CONNECTION_LIFE_TIME}
+      - PGPOOL_CLIENT_IDLE_LIMIT=${PGPOOL_CLIENT_IDLE_LIMIT}
+      - PGPOOL_MAX_POOL=${PGPOOL_MAX_POOL}
+      - PGPOOL_NUM_INIT_CHILDREN=${PGPOOL_NUM_INIT_CHILDREN}
+
+      # 日志配置
+      - PGPOOL_ENABLE_LOG_PER_NODE_STATEMENT=${PGPOOL_ENABLE_LOG_PER_NODE_STATEMENT}
+      - PGPOOL_LOG_STATEMENT=${PGPOOL_LOG_STATEMENT}
+      - PGPOOL_LOG_CONNECTIONS=${PGPOOL_LOG_CONNECTIONS}
+
+      # 其他配置
+      - PGPOOL_ENABLE_LDAP=no
+
+    networks:
+      - pgpool_network
+
+    restart: unless-stopped
+
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -h localhost -p 5432 -U ${POSTGRESQL_USERNAME} || exit 1',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+networks:
+  pgpool_network:
+    driver: bridge

@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  odyssey:
+    build:
+      context: ./odyssey-src
+      dockerfile: docker/Dockerfile
+    container_name: ${ODYSSEY_CONTAINER_NAME}
+    restart: unless-stopped
+    env_file:
+      - example.odyssey.env
+    ports:
+      - '${ODYSSEY_PORT}:${ODYSSEY_PORT}'
+    volumes:
+      - ./odyssey.conf:/etc/odyssey.conf:ro
+      - ./logs:/var/log/odyssey
+    networks:
+      - postgres-network
+    healthcheck:
+      test: ['CMD-SHELL', 'nc -z localhost ${ODYSSEY_PORT} || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+networks:
+  postgres-network:
+    external: true

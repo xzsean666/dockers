@@ -1,0 +1,139 @@
+#
+# Odyssey Configuration for PostgreSQL Read/Write Split
+# 
+# This configuration provides:
+# - Write queries routing to master
+# - Read queries routing to slave
+# - Connection pooling and load balancing
+#
+
+###
+### LOGGING
+###
+
+log_format "%p %t %l [%i %s] (%c) %m\n"
+log_to_stdout ${LOG_TO_STDOUT}
+log_debug ${LOG_DEBUG}
+log_config ${LOG_CONFIG}
+log_session ${LOG_SESSION}
+log_query ${LOG_QUERY}
+
+###
+### PERFORMANCE
+###
+
+workers ${WORKERS}
+resolvers ${RESOLVERS}
+readahead ${READAHEAD}
+cache_coroutine ${CACHE_COROUTINE}
+coroutine_stack_size ${COROUTINE_STACK_SIZE}
+
+###
+### GLOBAL LIMITS
+###
+
+client_max ${CLIENT_MAX}
+
+###
+### LISTEN
+###
+
+listen {
+	host "*"
+	port ${ODYSSEY_PORT}
+	backlog 128
+}
+
+###
+### STORAGES (DATABASE SERVERS)
+###
+
+# Master Database (for writes)
+storage "master" {
+	type "remote"
+	host "${POSTGRES_MASTER_HOST}"
+	port ${POSTGRES_MASTER_PORT}
+}
+
+# Slave Database (for reads)
+storage "slave" {
+	type "remote"
+	host "${POSTGRES_SLAVE_HOST}"
+	port ${POSTGRES_SLAVE_PORT}
+}
+
+###
+### DATABASES AND USERS
+###
+
+# Database routing for writes (INSERT, UPDATE, DELETE, DDL)
+database "write_${POSTGRES_MASTER_DB}" {
+	user "write_${POSTGRES_MASTER_USER}" {
+		authentication "${AUTH_TYPE}"
+		password "${POSTGRES_MASTER_PASSWORD}"
+		
+		storage "master"
+		storage_db "${POSTGRES_MASTER_DB}"
+		storage_user "${POSTGRES_MASTER_USER}"
+		storage_password "${POSTGRES_MASTER_PASSWORD}"
+		
+		pool "transaction"
+		pool_size ${POOL_SIZE}
+		pool_timeout ${POOL_TIMEOUT}
+		pool_ttl ${POOL_TTL}
+		pool_cancel ${POOL_CANCEL}
+		pool_rollback ${POOL_ROLLBACK}
+		
+		client_fwd_error yes
+		log_debug ${LOG_DEBUG}
+	}
+}
+
+# Database routing for reads (SELECT)
+database "read_${POSTGRES_SLAVE_DB}" {
+	user "read_${POSTGRES_SLAVE_USER}" {
+		authentication "${AUTH_TYPE}"
+		password "${POSTGRES_SLAVE_PASSWORD}"
+		
+		storage "slave"
+		storage_db "${POSTGRES_SLAVE_DB}"
+		storage_user "${POSTGRES_SLAVE_USER}"
+		storage_password "${POSTGRES_SLAVE_PASSWORD}"
+		
+		pool "transaction"
+		pool_size ${POOL_SIZE}
+		pool_timeout ${POOL_TIMEOUT}
+		pool_ttl ${POOL_TTL}
+		pool_cancel ${POOL_CANCEL}
+		pool_rollback ${POOL_ROLLBACK}
+		
+		# 强制只读模式 - 确保从库只处理读操作
+		pool_readonly yes
+		
+		client_fwd_error yes
+		log_debug ${LOG_DEBUG}
+	}
+}
+
+# Default database routing (can be used for admin operations)
+database "${POSTGRES_MASTER_DB}" {
+	user "${POSTGRES_MASTER_USER}" {
+		authentication "${AUTH_TYPE}"
+		password "${POSTGRES_MASTER_PASSWORD}"
+		
+		storage "master"
+		storage_db "${POSTGRES_MASTER_DB}"
+		storage_user "${POSTGRES_MASTER_USER}"
+		storage_password "${POSTGRES_MASTER_PASSWORD}"
+		
+		pool "transaction"
+		pool_size ${POOL_SIZE}
+		pool_timeout ${POOL_TIMEOUT}
+		pool_ttl ${POOL_TTL}
+		pool_cancel ${POOL_CANCEL}
+		pool_rollback ${POOL_ROLLBACK}
+		
+		client_fwd_error yes
+		log_debug ${LOG_DEBUG}
+	}
+} 

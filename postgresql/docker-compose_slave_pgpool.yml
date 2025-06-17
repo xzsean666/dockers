@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Slave (本地从数据库)
+  postgresql-slave:
+    image: 'bitnami/postgresql:17.5.0'
+    container_name: ${POSTGRESQL_SLAVE_CONTAINER_NAME}
+    restart: always
+    user: root
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=slave
+      - POSTGRESQL_MASTER_HOST=${POSTGRESQL_MASTER_HOST}
+      - POSTGRESQL_MASTER_PORT_NUMBER=${POSTGRESQL_MASTER_PORT_NUMBER}
+      - POSTGRESQL_REPLICATION_USER=${POSTGRESQL_REPLICATION_USER}
+      - POSTGRESQL_REPLICATION_PASSWORD=${POSTGRESQL_REPLICATION_PASSWORD}
+      - POSTGRESQL_PASSWORD=${POSTGRESQL_PASSWORD}
+      - POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE}
+      - POSTGRESQL_USERNAME=${POSTGRESQL_USERNAME}
+      # 设置 postgres 超级用户密码（用于管理和权限设置）
+      - POSTGRESQL_POSTGRES_PASSWORD=${POSTGRESQL_PASSWORD}
+      # 禁用 LDAP
+      - POSTGRESQL_ENABLE_LDAP=no
+    volumes:
+      - './data:/bitnami/postgresql/data'
+    networks:
+      - pgpool_network
+
+  # Pgpool (连接池和读写分离)
+  pgpool:
+    image: bitnami/pgpool:4
+    container_name: ${PGPOOL_CONTAINER_NAME}
+    depends_on:
+      - postgresql-slave
+    ports:
+      - '${PGPOOL_PORT}:5432'
+    environment:
+      # 后端节点配置
+      - PGPOOL_BACKEND_NODES=0:${POSTGRESQL_MASTER_HOST}:${POSTGRESQL_MASTER_PORT_NUMBER},1:${POSTGRESQL_SLAVE_CONTAINER_NAME}:5432
+
+      # 数据库连接凭据
+      - PGPOOL_POSTGRES_USERNAME=${POSTGRESQL_USERNAME}
+      - PGPOOL_POSTGRES_PASSWORD=${POSTGRESQL_PASSWORD}
+
+      # 流复制健康检查
+      - PGPOOL_SR_CHECK_USER=${POSTGRESQL_USERNAME}
+      - PGPOOL_SR_CHECK_PASSWORD=${POSTGRESQL_PASSWORD}
+      - PGPOOL_SR_CHECK_PERIOD=10
+
+      # 管理员账户
+      - PGPOOL_ADMIN_USERNAME=${PGPOOL_ADMIN_USERNAME}
+      - PGPOOL_ADMIN_PASSWORD=${PGPOOL_ADMIN_PASSWORD}
+
+      # 负载均衡与读写分离
+      - PGPOOL_LOAD_BALANCE_MODE=on
+      - PGPOOL_ENABLE_LOAD_BALANCING=yes
+      - PGPOOL_ENABLE_STATEMENT_LOAD_BALANCING=yes
+      - PGPOOL_DISABLE_LOAD_BALANCE_ON_WRITE=transaction
+
+      # 权重设置：主库权重为 0，强制 SELECT 不走主库
+      - PGPOOL_BACKEND_WEIGHT0=0
+      - PGPOOL_BACKEND_WEIGHT1=1
+
+      # 主从模式配置
+      - PGPOOL_MASTER_SLAVE_MODE=on
+      - PGPOOL_MASTER_SLAVE_SUB_MODE=stream
+
+      # 数据库节点状态配置
+      - PGPOOL_BACKEND_APPLICATION_NAME0=master
+      - PGPOOL_BACKEND_APPLICATION_NAME1=slave
+
+      # 连接池配置
+      - PGPOOL_NUM_INIT_CHILDREN=10
+      - PGPOOL_MAX_POOL=4
+
+      # 禁止因从库延迟而切换回主库
+      - PGPOOL_DELAY_THRESHOLD=0
+
+      # 添加黑白名单功能来强制查询路由
+      - PGPOOL_BLACK_FUNCTION_LIST='nextval,setval,currval,lastval'
+      - PGPOOL_WHITE_FUNCTION_LIST='count,sum,max,min,avg,array_agg,string_agg'
+
+      # 设置查询解析器更严格地识别只读查询
+      - PGPOOL_RELCACHE_EXPIRE=0
+      - PGPOOL_RELCACHE_SIZE=256
+
+      # 确保 SELECT 查询被识别为只读
+      - PGPOOL_CHECK_UNLOGGED_TABLE=off
+      - PGPOOL_CHECK_TEMP_TABLE=off
+
+      # 添加应用名称以便调试
+      - PGPOOL_APPLICATION_NAME_ADD_HOST=on
+
+      # 系统表查询处理
+      - PGPOOL_ALLOW_SQL_COMMENTS=on
+      - PGPOOL_IGNORE_LEADING_WHITE_SPACE=on
+
+      # 强制普通表查询的负载均衡
+      - PGPOOL_STATEMENT_LEVEL_LOAD_BALANCE=on
+      - PGPOOL_MEMORY_CACHE_ENABLED=off
+
+      # 设置后端节点标志
+      - PGPOOL_BACKEND_FLAG0=DISALLOW_TO_FAILOVER
+      - PGPOOL_BACKEND_FLAG1=DISALLOW_TO_FAILOVER
+
+      # 日志配置（便于调试查询路由）
+      - PGPOOL_ENABLE_LOG_PER_NODE_STATEMENT=yes
+      - PGPOOL_LOG_STATEMENT=on
+      - PGPOOL_LOG_CONNECTIONS=on
+      - PGPOOL_LOG_HOSTNAME=on
+
+    networks:
+      - pgpool_network
+    restart: unless-stopped
+
+networks:
+  pgpool_network:
+    driver: bridge

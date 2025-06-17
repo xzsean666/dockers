@@ -1,12 +1,12 @@
 serverAddr = "31.58.137.32"
-serverPort = 5079
+serverPort = 5070
 auth.token = "sean777_your_strong_token_here"
 
 # 端口转发配置
 [[proxies]]
 name = "tcp-5070"
 type = "tcp"
-localPort = 5070
+localPort = 15432
 remotePort = 5700
 [[proxies]]
 name = "tcp-5071"
