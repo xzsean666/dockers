@@ -1,0 +1,26 @@
+version: '3'
+
+services:
+  node-app:
+    container_name: node-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./app:/app
+      - ./crontabs:/var/spool/cron/crontabs
+
+    # ports:
+    #   - "5060-5065:5060-5065"
+    # environment:
+    #   - http_proxy=http://127.0.0.1:7897
+    #   - https_proxy=http://127.0.0.1:7897
+    # -e HTTP_PROXY="http://myuser:mypassword@云服务器IP:13128" \
+    # -e HTTPS_PROXY="http://myuser:mypassword@云服务器IP:13128" \
+
+    user: "root"
+    network_mode: host
+    restart: unless-stopped
+    command: sh -c "/app/startup.sh && cron && tail -f /var/log/cron.log"
+
+

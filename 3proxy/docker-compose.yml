@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+  proxy:
+    image: tarampampam/3proxy:latest
+    container_name: local-proxy
+    ports:
+      - "13128:3128"
+    environment:
+      - PROXY_USER=myuser
+      - PROXY_PASSWORD=mypassword
+    restart: unless-stopped
+
+# -e HTTP_PROXY="http://myuser:mypassword@云服务器IP:13128" \
+# -e HTTPS_PROXY="http://myuser:mypassword@云服务器IP:13128" \
