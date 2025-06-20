@@ -12,6 +12,7 @@ ENV NODE_ENV=production
 ENV TIMEZONE=Asia/Shanghai
 ENV CRON_ENABLED=false
 ENV CRON_JOBS=""
+ENV BUILD_ENABLED=true
 ENV PROJECT_NAME=heartbeat-signal-backend
 
 # 安装必要的系统依赖
@@ -76,7 +77,11 @@ RUN echo '#!/bin/sh' > /usr/local/bin/start.sh && \
     echo '  echo "🚀 使用pm2.sh脚本启动应用..."' >> /usr/local/bin/start.sh && \
     echo '  if [ -f "./pm2.sh" ]; then' >> /usr/local/bin/start.sh && \
     echo '    # 启动PM2应用' >> /usr/local/bin/start.sh && \
-    echo '    ./pm2.sh --start $APP_MAIN_SCRIPT' >> /usr/local/bin/start.sh && \
+    echo '    if [ "$BUILD_ENABLED" = "true" ]; then' >> /usr/local/bin/start.sh && \
+    echo '      ./pm2.sh --start --build --path "$APP_MAIN_SCRIPT"' >> /usr/local/bin/start.sh && \
+    echo '    else' >> /usr/local/bin/start.sh && \
+    echo '      ./pm2.sh --start --path "$APP_MAIN_SCRIPT"' >> /usr/local/bin/start.sh && \
+    echo '    fi' >> /usr/local/bin/start.sh && \
     echo '    if [ $? -eq 0 ]; then' >> /usr/local/bin/start.sh && \
     echo '      echo "✅ PM2应用启动成功"' >> /usr/local/bin/start.sh && \
     echo '      # 使用pm2-runtime保持容器运行' >> /usr/local/bin/start.sh && \
