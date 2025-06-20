@@ -1,15 +1,19 @@
 version: '3'
 
 services:
-  node-playwright:
-    container_name: node-playwright
+  app:
+    container_name: ${PROJECT_NAME:-lst-service}
     build:
       context: .
       dockerfile: Dockerfile
+      # 启用BuildKit缓存
       args:
         BUILDKIT_INLINE_CACHE: 1
     volumes:
-      - ./app:/app
+      # 挂载整个项目目录
+      - .:/app
+      # 挂载日志目录
+      - ./logs:/var/log
       - ./crontabs:/var/spool/cron/crontabs
 
     # ports:
@@ -28,3 +32,7 @@ services:
       options:
         max-size: '100m'
         max-file: '3'
+
+    # 添加命令以便测试缓存
+    # 可以通过 docker-compose run app sh 进入容器测试
+    # command: tail -f /dev/null  # 保持容器运行用于调试

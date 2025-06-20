@@ -12,10 +12,7 @@ services:
     # environment:
     #   - http_proxy=http://127.0.0.1:7897
     #   - https_proxy=http://127.0.0.1:7897
-    user: "root"
+    user: 'root'
     network_mode: host
     restart: unless-stopped
-    command: sh -c "/app/start.sh && sleep infinity"
-    # command: sh -c "/app/start.sh && cron && tail -f /var/log/cron.log"
-
-
+    command: sh -c "/app/startup.sh && tail -f /app/logs/cron_jobs.log"

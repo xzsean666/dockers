@@ -6,6 +6,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        BUILDKIT_INLINE_CACHE: 1
     volumes:
       - ./app:/app
       - ./crontabs:/var/spool/cron/crontabs
@@ -18,9 +20,13 @@ services:
     # -e HTTP_PROXY="http://myuser:mypassword@云服务器IP:13128" \
     # -e HTTPS_PROXY="http://myuser:mypassword@云服务器IP:13128" \
 
-    user: "root"
+    user: 'root'
     network_mode: host
     restart: unless-stopped
-    command: sh -c "/app/startup.sh && cron && tail -f /var/log/cron.log"
+    command: /usr/local/bin/start.sh
 
-
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '100m'
+        max-file: '3'

@@ -94,24 +94,32 @@ COMMAND="$*"  # Get all parameters as one string
 # Create logs directory if it doesn't exist
 mkdir -p /app/logs
 
-LOG_FILE="/app/logs/$COMMAND.log"
+# Get current directory name
+CURRENT_DIR=$(basename "$(pwd)")
 
-echo "$(date): 开始执行 $COMMAND 脚本" >> $LOG_FILE
+# Clean command for filename - replace / with _ and other special chars
+CLEAN_COMMAND=$(echo "$COMMAND" | sed 's/[\/]/_/g' | sed 's/[^a-zA-Z0-9._-]/_/g')
 
-cd /app/common/rpc-monitor-service
+# Create log filename with current directory prefix
+LOG_FILE="/app/logs/${CURRENT_DIR}_${CLEAN_COMMAND}.log"
 
-YARN_PATH="/usr/local/bin/yarn"
+echo "$(date): 开始执行 $COMMAND 脚本" >> "$LOG_FILE"
+
 NODE_PATH="/usr/local/bin/node"
 
-$NODE_PATH $COMMAND >> $LOG_FILE 2>&1
+$NODE_PATH $COMMAND >> "$LOG_FILE" 2>&1
 
-echo "$(date): $COMMAND 脚本执行完成" >> $LOG_FILE
+echo "$(date): $COMMAND 脚本执行完成" >> "$LOG_FILE"
 EOF
 
 # Make bot.sh executable
 chmod +x app/bot.sh
 cp GSM.sh app/GSM.sh
 chmod +x app/GSM.sh
+
+echo "export GITHUB_TOKEN=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" >> ~/.bashrc
+echo "ulimit -c 0" >> ~/.bashrc
+source ~/.bashrc
 
 echo "Directory structure and files created successfully!"
 echo "Crontab entries have been added successfully!"

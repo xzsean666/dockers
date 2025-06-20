@@ -1,6 +1,10 @@
 # 使用Node.js 20.12.2作为基础镜像
 FROM node:20.12.2
 
+# 设置 pnpm 环境变量（遵循官方文档建议）
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+
 # 创建并配置阿里云源
 RUN rm -rf /etc/apt/sources.list.d/* && \
     rm -f /etc/apt/sources.list && \
@@ -44,8 +48,8 @@ RUN apt-get update && \
 # 设置显示环境变量
 ENV DISPLAY=:99
 
-# 安装 pnpm
-RUN npm install -g pnpm
+# 启用 corepack 并安装 pnpm
+RUN corepack enable
 
 # 创建工作目录
 WORKDIR /app
