@@ -30,6 +30,13 @@ services:
       - BINANCE_SECRET=${BINANCE_SECRET}
       - DASHBOARD_URL=http://trade-dashboard-backend:3000
     working_dir: /app
+    deploy:
+      resources:
+        limits:
+          memory: 45G  # 最大内存限制
+    shm_size: 45G
+    networks:
+      - trade-network
 
 networks:
   trade-network:

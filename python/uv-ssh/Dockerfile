@@ -20,6 +20,8 @@ RUN cd /tmp/build && \
     # 创建虚拟环境
     uv venv /usr/local/quantvenv --python 3.12 && \
     echo 'source /usr/local/quantvenv/bin/activate' >> /root/.bashrc && \
+    # 安装pip
+    /usr/local/quantvenv/bin/python -m ensurepip --upgrade && \
     # 设置环境变量确保uv使用正确的虚拟环境
     export UV_PROJECT_ENVIRONMENT=/usr/local/quantvenv && \
     # 创建锁文件（这里可能需要访问私有仓库）
@@ -39,20 +41,26 @@ RUN cd /tmp/build && \
 ENV http_proxy=""
 ENV https_proxy=""
 
-# 创建启动脚本来动态设置密码
+# 创建启动脚本来动态设置密码和优化SSH
 RUN echo '#!/bin/bash\n\
-# 设置root密码（如果提供了ROOT_PASSWORD环境变量）\n\
-if [ -n "$ROOT_PASSWORD" ]; then\n\
+    set -e\n\
+    \n\
+    # 设置root密码（如果提供了ROOT_PASSWORD环境变量）\n\
+    if [ -n "$ROOT_PASSWORD" ]; then\n\
     echo "root:$ROOT_PASSWORD" | chpasswd\n\
-    echo "Root password set from environment variable"\n\
-else\n\
+    else\n\
     echo "Warning: No ROOT_PASSWORD environment variable provided"\n\
-fi\n\
-\n\
-# 启动SSH服务\n\
-exec /usr/sbin/sshd -D\n\
-' > /start.sh && \
-chmod +x /start.sh
+    fi\n\
+    \n\
+    # 优化SSH登录速度\n\
+    sed -i "s/^#\\?UseDNS.*/UseDNS no/" /etc/ssh/sshd_config\n\
+    sed -i "s/^#\\?GSSAPIAuthentication.*/GSSAPIAuthentication no/" /etc/ssh/sshd_config\n\
+    sed -i "s/^hosts:.*/hosts: files/" /etc/nsswitch.conf\n\
+    \n\
+    # 启动SSH服务\n\
+    exec /usr/sbin/sshd -D\n\
+    ' > /start.sh && \
+    chmod +x /start.sh
 
 # 使用启动脚本
 CMD ["/start.sh"] 
