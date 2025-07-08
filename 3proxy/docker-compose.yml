@@ -1,15 +1,30 @@
-version: '3'
+version: '3.7' # 更高版本以支持 ulimits
 
 services:
   proxy:
     image: tarampampam/3proxy:latest
     container_name: local-proxy
     ports:
-      - "13128:3128"
+      - '13128:3128'
     environment:
-      - PROXY_USER=myuser
-      - PROXY_PASSWORD=mypassword
+      - PROXY_USER=astrid
+      - PROXY_PASSWORD=111111
+      - PROXY_FLUSH=true
+      - PROXY_NSERVER=8.8.8.8
+      - PROXY_TIMEOUTS=1 5 30 60 180 1800 15 60
     restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+# echo 'export http_proxy="http://astrid:111111@31.58.137.32:13128"' >> ~/.bashrc
+# echo 'export https_proxy="http://astrid:111111@31.58.137.32:13128"' >> ~/.bashrc
+# export http_proxy="http://astrid:111111@31.58.137.32:13128"
+# export https_proxy="http://astrid:111111@31.58.137.32:13128"
 
+# curl -x http://astrid:111111@31.58.137.32:13128 https://ipinfo.io
 # -e HTTP_PROXY="http://myuser:mypassword@云服务器IP:13128" \
 # -e HTTPS_PROXY="http://myuser:mypassword@云服务器IP:13128" \

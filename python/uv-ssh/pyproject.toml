@@ -1,0 +1,12 @@
+[project]
+name = "quant-trade"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "nexustrader",
+]
+
+[tool.uv.sources]
+nexustrader = { git = "https://github.com/AstridTechnologies/quant-trade.git" }

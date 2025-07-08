@@ -1,53 +1,58 @@
-# 使用 Ubuntu 22.04 LTS 作为基础镜像
-FROM ubuntu:22.04
+# 使用自定义的基础镜像
+FROM uv-ssh-base:latest
 
-# 设置非交互式安装，避免安装过程中的提示
-ENV DEBIAN_FRONTEND=noninteractive
+# 设置代理环境变量
+ENV http_proxy="http://astrid:4CBa737x10IgZU676z@31.58.137.32:13128"
+ENV https_proxy="http://astrid:4CBa737x10IgZU676z@31.58.137.32:13128"
 
-# 先使用默认源安装证书和基础工具
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# 接收构建参数但不保留为环境变量
+ARG GITHUB_TOKEN
 
-# 配置 Ubuntu 阿里云镜像源
-RUN rm -rf /etc/apt/sources.list.d/* && \
-    rm -f /etc/apt/sources.list && \
-    echo "deb https://mirrors.aliyun.com/ubuntu/ jammy main restricted universe multiverse" > /etc/apt/sources.list && \
-    echo "deb https://mirrors.aliyun.com/ubuntu/ jammy-security main restricted universe multiverse" >> /etc/apt/sources.list && \
-    echo "deb https://mirrors.aliyun.com/ubuntu/ jammy-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
-    echo "deb https://mirrors.aliyun.com/ubuntu/ jammy-backports main restricted universe multiverse" >> /etc/apt/sources.list
+# 复制项目文件到临时位置进行构建
+COPY pyproject.toml /tmp/build/
 
-# 更新源并安装其他软件包
-RUN apt-get update && apt-get install -y \
-    openssh-server \
-    sudo \
-    vim \
-    git \
-    python3 \
-    python3-pip \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
+# 配置 git 使用 token，创建虚拟环境，安装依赖
+RUN cd /tmp/build && \
+    # 配置git认证
+    git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/" && \
+    # 验证git配置
+    git config --global --list | grep url && \
+    # 创建虚拟环境
+    uv venv /usr/local/quantvenv --python 3.12 && \
+    echo 'source /usr/local/quantvenv/bin/activate' >> /root/.bashrc && \
+    # 设置环境变量确保uv使用正确的虚拟环境
+    export UV_PROJECT_ENVIRONMENT=/usr/local/quantvenv && \
+    # 创建锁文件（这里可能需要访问私有仓库）
+    echo "Creating lock file..." && \
+    uv lock --verbose && \
+    # 同步依赖
+    echo "Syncing dependencies..." && \
+    uv sync --frozen --verbose && \
+    # 验证安装
+    echo "Verifying installation..." && \
+    ls -la /usr/local/quantvenv/lib/python*/site-packages/ | grep -i nexus || echo "nexustrader not found in site-packages" && \
+    # 清理 git 配置和临时文件
+    git config --global --unset url."https://${GITHUB_TOKEN}@github.com/".insteadOf && \
+    rm -rf /tmp/build
 
-# 通过 pip 安装 uv
-RUN pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple uv
+# 移除代理环境变量
+ENV http_proxy=""
+ENV https_proxy=""
 
-# 设置 uv 使用中国镜像源
-ENV UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+# 创建启动脚本来动态设置密码
+RUN echo '#!/bin/bash\n\
+# 设置root密码（如果提供了ROOT_PASSWORD环境变量）\n\
+if [ -n "$ROOT_PASSWORD" ]; then\n\
+    echo "root:$ROOT_PASSWORD" | chpasswd\n\
+    echo "Root password set from environment variable"\n\
+else\n\
+    echo "Warning: No ROOT_PASSWORD environment variable provided"\n\
+fi\n\
+\n\
+# 启动SSH服务\n\
+exec /usr/sbin/sshd -D\n\
+' > /start.sh && \
+chmod +x /start.sh
 
-# 配置SSH
-RUN mkdir /var/run/sshd && \
-    ssh-keygen -A && \
-    echo 'root:111111' | chpasswd && \
-    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
-    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
-
-# 创建工作目录
-WORKDIR /root
-RUN mkdir -p /root
-
-# 暴露SSH端口
-EXPOSE 22
-
-# 启动SSH服务
-CMD ["/usr/sbin/sshd", "-D"] 
+# 使用启动脚本
+CMD ["/start.sh"] 

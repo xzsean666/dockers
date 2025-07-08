@@ -1,0 +1,7 @@
+services:
+  # 基础镜像构建
+  uv-ssh-base:
+    build:
+      context: .
+      dockerfile: Dockerfile.base
+    image: uv-ssh-base:latest

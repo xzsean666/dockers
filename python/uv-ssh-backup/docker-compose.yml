@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  uv-ssh:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: uv-ssh
+    restart: unless-stopped
+    ports:
+      - '10022:22' # SSH端口
+    volumes:
+      - ./app:/app
+      - /hdd16/uv_docker_cache:/root/.cache/uv
+    environment:
+      - ROOT_PASSWORD=111111
+    working_dir: /app
