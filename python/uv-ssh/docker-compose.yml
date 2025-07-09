@@ -33,7 +33,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 45G  # 最大内存限制
+          memory: 45G # 最大内存限制
     shm_size: 45G
     networks:
       - trade-network

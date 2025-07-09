@@ -1,12 +1,12 @@
 # 使用自定义的基础镜像
 FROM uv-ssh-base:latest
 
+# 接收构建参数
+ARG GITHUB_TOKEN
+
 # 设置代理环境变量
 ENV http_proxy="http://astrid:4CBa737x10IgZU676z@31.58.137.32:13128"
 ENV https_proxy="http://astrid:4CBa737x10IgZU676z@31.58.137.32:13128"
-
-# 接收构建参数但不保留为环境变量
-ARG GITHUB_TOKEN
 
 # 复制项目文件到临时位置进行构建
 COPY pyproject.toml /tmp/build/
@@ -37,19 +37,16 @@ RUN cd /tmp/build && \
     git config --global --unset url."https://${GITHUB_TOKEN}@github.com/".insteadOf && \
     rm -rf /tmp/build
 
-# 移除代理环境变量
-ENV http_proxy=""
-ENV https_proxy=""
-
-# 创建启动脚本来动态设置密码和优化SSH
+# 创建启动脚本来设置密码和优化SSH
 RUN echo '#!/bin/bash\n\
     set -e\n\
     \n\
     # 设置root密码（如果提供了ROOT_PASSWORD环境变量）\n\
     if [ -n "$ROOT_PASSWORD" ]; then\n\
-    echo "root:$ROOT_PASSWORD" | chpasswd\n\
+        echo "root:$ROOT_PASSWORD" | chpasswd\n\
+        echo "✓ Root password configured"\n\
     else\n\
-    echo "Warning: No ROOT_PASSWORD environment variable provided"\n\
+        echo "⚠ Warning: No ROOT_PASSWORD environment variable provided"\n\
     fi\n\
     \n\
     # 优化SSH登录速度\n\
@@ -57,10 +54,17 @@ RUN echo '#!/bin/bash\n\
     sed -i "s/^#\\?GSSAPIAuthentication.*/GSSAPIAuthentication no/" /etc/ssh/sshd_config\n\
     sed -i "s/^hosts:.*/hosts: files/" /etc/nsswitch.conf\n\
     \n\
+    # 显示代理状态\n\
+    echo "Proxy status: http_proxy=${http_proxy:-<not set>}"\n\
+    \n\
     # 启动SSH服务\n\
     exec /usr/sbin/sshd -D\n\
     ' > /start.sh && \
     chmod +x /start.sh
+
+# 保留代理环境变量（不移除）
+# ENV http_proxy=""
+# ENV https_proxy=""
 
 # 使用启动脚本
 CMD ["/start.sh"] 
