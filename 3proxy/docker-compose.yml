@@ -6,12 +6,15 @@ services:
     container_name: local-proxy
     ports:
       - '13128:3128'
+      - '11080:1080'
     environment:
-      - PROXY_USER=astrid
+      - PROXY_LOGIN=astrid
       - PROXY_PASSWORD=111111
-      - PROXY_FLUSH=true
-      - PROXY_NSERVER=8.8.8.8
-      - PROXY_TIMEOUTS=1 5 30 60 180 1800 15 60
+      - MAX_CONNECTIONS=10000
+      - PRIMARY_RESOLVER=8.8.8.8
+      - SECONDARY_RESOLVER=1.1.1.1
+      - EXTRA_CONFIG=flush\ntimeouts 1 5 30 60 180 1800 15 60
+
     restart: unless-stopped
     ulimits:
       nofile:
