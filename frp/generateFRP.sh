@@ -9,6 +9,58 @@ fi
 # 加载环境变量
 source .env
 
+# 验证必需的环境变量
+required_vars=(
+    "FRP_VERSION"
+    "FRP_PORT"
+    "DASHBOARD_PORT"
+    "DASHBOARD_USER"
+    "DASHBOARD_PWD"
+    "FRP_TOKEN"
+    "ALLOW_PORTS_START"
+    "ALLOW_PORTS_END"
+    "SERVER_IP"
+    "LOCAL_PORTS_START"
+    "LOCAL_PORTS_END"
+)
+
+for var in "${required_vars[@]}"; do
+    if [ -z "${!var}" ]; then
+        echo "Error: Environment variable $var is not set!"
+        exit 1
+    fi
+done
+
+# 验证端口号是否为数字
+validate_port() {
+    if ! [[ "$1" =~ ^[0-9]+$ ]] || [ "$1" -lt 1 ] || [ "$1" -gt 65535 ]; then
+        echo "Error: Invalid port number: $1"
+        exit 1
+    fi
+}
+
+validate_port "$FRP_PORT"
+validate_port "$DASHBOARD_PORT"
+validate_port "$ALLOW_PORTS_START"
+validate_port "$ALLOW_PORTS_END"
+validate_port "$LOCAL_PORTS_START"
+validate_port "$LOCAL_PORTS_END"
+
+# 验证端口范围
+if [ "$ALLOW_PORTS_START" -gt "$ALLOW_PORTS_END" ]; then
+    echo "Error: ALLOW_PORTS_START ($ALLOW_PORTS_START) must be <= ALLOW_PORTS_END ($ALLOW_PORTS_END)"
+    exit 1
+fi
+
+if [ "$LOCAL_PORTS_START" -gt "$LOCAL_PORTS_END" ]; then
+    echo "Error: LOCAL_PORTS_START ($LOCAL_PORTS_START) must be <= LOCAL_PORTS_END ($LOCAL_PORTS_END)"
+    exit 1
+fi
+
+# 获取脚本所在目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 # 创建必要的目录
 mkdir -p frp/server frp/client
 
@@ -40,10 +92,11 @@ cat > frp/server/docker-compose.yml << EOF
 version: '3'
 services:
   frps:
-    image: snowdreamtech/frps
+    image: fatedier/frp:${FRP_VERSION}
     container_name: frps
     restart: always
     network_mode: host
+    command: frps -c /etc/frp/frps.toml
     volumes:
       - ./frps.toml:/etc/frp/frps.toml
 EOF
@@ -51,15 +104,15 @@ EOF
 # 生成客户端配置文件
 cat > frp/client/frpc.toml << EOF
 serverAddr = "${SERVER_IP}"
-serverPort = ${SERVER_PORT}
+serverPort = ${FRP_PORT}
 auth.token = "${FRP_TOKEN}"
 
 # 端口转发配置
 EOF
 
-# 生成端口转发配置
-for ((local_port=LOCAL_PORTS_START, remote_port=ALLOW_PORTS_START; 
-      local_port<=LOCAL_PORTS_END && remote_port<=ALLOW_PORTS_END; 
+# 生成端口转发配置（修复变量引用问题）
+for ((local_port=$LOCAL_PORTS_START, remote_port=$ALLOW_PORTS_START; 
+      local_port<=$LOCAL_PORTS_END && remote_port<=$ALLOW_PORTS_END; 
       local_port++, remote_port++)); do
     cat >> frp/client/frpc.toml << EOF
 [[proxies]]
@@ -75,10 +128,11 @@ cat > frp/client/docker-compose.yml << EOF
 version: '3'
 services:
   frpc:
-    image: snowdreamtech/frpc
+    image: fatedier/frp:${FRP_VERSION}
     container_name: frpc
     restart: always
     network_mode: host
+    command: frpc -c /etc/frp/frpc.toml
     volumes:
       - ./frpc.toml:/etc/frp/frpc.toml
 EOF
@@ -86,3 +140,10 @@ EOF
 echo "FRP configuration files have been generated successfully!"
 echo "Server configuration is in frp/server/"
 echo "Client configuration is in frp/client/"
+echo ""
+echo "Configuration summary:"
+echo "- FRP Version: $FRP_VERSION"
+echo "- FRP Port: $FRP_PORT"
+echo "- Dashboard: http://localhost:$DASHBOARD_PORT (${DASHBOARD_USER}/${DASHBOARD_PWD})"
+echo "- Allowed remote ports: $ALLOW_PORTS_START-$ALLOW_PORTS_END"
+echo "- Local ports mapped: $LOCAL_PORTS_START-$LOCAL_PORTS_END"

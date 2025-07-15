@@ -1,60 +1,60 @@
-serverAddr = "31.58.137.32"
-serverPort = 5070
-auth.token = "sean777_your_strong_token_here"
+serverAddr = "your_server_ip"
+serverPort = 7000
+auth.token = "your_strong_token_here"
 
 # 端口转发配置
 [[proxies]]
-name = "tcp-5070"
+name = "tcp-5800"
 type = "tcp"
-localPort = 15432
-remotePort = 5700
+localPort = 5800
+remotePort = 5800
 [[proxies]]
-name = "tcp-5071"
+name = "tcp-5801"
 type = "tcp"
-localPort = 5071
-remotePort = 5701
+localPort = 5801
+remotePort = 5801
 [[proxies]]
-name = "tcp-5072"
+name = "tcp-5802"
 type = "tcp"
-localPort = 5072
-remotePort = 5702
+localPort = 5802
+remotePort = 5802
 [[proxies]]
-name = "tcp-5073"
+name = "tcp-5803"
 type = "tcp"
-localPort = 5073
-remotePort = 5703
+localPort = 5803
+remotePort = 5803
 [[proxies]]
-name = "tcp-5074"
+name = "tcp-5804"
 type = "tcp"
-localPort = 5074
-remotePort = 5704
+localPort = 5804
+remotePort = 5804
 [[proxies]]
-name = "tcp-5075"
+name = "tcp-5805"
 type = "tcp"
-localPort = 5075
-remotePort = 5705
+localPort = 5805
+remotePort = 5805
 [[proxies]]
-name = "tcp-5076"
+name = "tcp-5806"
 type = "tcp"
-localPort = 5076
-remotePort = 5706
+localPort = 5806
+remotePort = 5806
 [[proxies]]
-name = "tcp-5077"
+name = "tcp-5807"
 type = "tcp"
-localPort = 5077
-remotePort = 5707
+localPort = 5807
+remotePort = 5807
 [[proxies]]
-name = "tcp-5078"
+name = "tcp-5808"
 type = "tcp"
-localPort = 5078
-remotePort = 5708
+localPort = 5808
+remotePort = 5808
 [[proxies]]
-name = "tcp-5079"
+name = "tcp-5809"
 type = "tcp"
-localPort = 5079
-remotePort = 5709
+localPort = 5809
+remotePort = 5809
 [[proxies]]
-name = "tcp-5080"
+name = "tcp-5810"
 type = "tcp"
-localPort = 5080
-remotePort = 5710
+localPort = 5810
+remotePort = 5810

@@ -1,19 +1,19 @@
 # 基础配置
 bindAddr = "0.0.0.0"
-bindPort = 5070
+bindPort = 7000
 
 # Dashboard配置
 webServer.addr = "0.0.0.0"
-webServer.port = 5075
+webServer.port = 7500
 webServer.user = "admin"
-webServer.password = "sean666_your_strong_password_here"
+webServer.password = "your_strong_password_here"
 
 # 认证配置
 auth.method = "token"
-auth.token = "sean777_your_strong_token_here"
+auth.token = "your_strong_token_here"
 
 # 端口配置
 transport.maxPoolCount = 10
 allowPorts = [
-    { start = 5700, end = 5710 }
+    { start = 5800, end = 5810 }
 ]
