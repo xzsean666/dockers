@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Anbox Cloud Stream</title>
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    #anbox-stream {
+      width: 90vw;
+      height: 90vh;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="anbox-stream"></div>
+
+  <!-- 引入 Anbox Streaming SDK -->
+  <script src="https://cdn.anbox-cloud.io/sdk/anbox-stream-sdk.min.js"></script>
+
+  <script>
+    const session = new AnboxStreamSession();
+
+    session.connect({
+      url: "wss://31.57.63.152/stream/930633ab-229b-452e-8f1f-cbbf0101939b",
+      containerElement: document.getElementById("anbox-stream"),
+      showPlayOverlay: false
+    }).then(() => {
+      console.log("✅ Streaming session connected.");
+    }).catch(err => {
+      console.error("❌ Failed to connect to stream:", err);
+    });
+  </script>
+
+</body>
+</html>
