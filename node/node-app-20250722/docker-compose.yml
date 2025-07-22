@@ -1,0 +1,28 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: heartbeat-signal-backend
+    restart: unless-stopped
+    user: root
+    network_mode: host
+    environment:
+      - NODE_ENV=production
+    volumes:
+      # 挂载整个项目目录
+      - .:/app
+      # 挂载日志目录
+      - /app/node_modules
+      - ./logs:/var/log
+
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '100m'
+        max-file: '3'
+
+    # 添加命令以便测试缓存
+    # 可以通过 docker-compose run app sh 进入容器测试
+    # command: tail -f /dev/null  # 保持容器运行用于调试

@@ -4,18 +4,25 @@ services:
       context: .
       dockerfile: Dockerfile
 
-    container_name: heartbeat-signal-backend
+    env_file:
+      - .env
+
+    container_name: ${PROJECT_NAME:-nestjs-module}
     restart: unless-stopped
     user: root
     network_mode: host
-    environment:
-      - NODE_ENV=production
+    # environment:
+      # - http_proxy=http://127.0.0.1:7897
+      # - https_proxy=http://127.0.0.1:7897
     volumes:
-      # 挂载整个项目目录
+      # 挂载整个项目目录到容器的/app目录
       - .:/app
-      # 挂载日志目录
+      # 排除node_modules，使用镜像中预安装的依赖
       - /app/node_modules
+      # 挂载日志目录
       - ./logs:/var/log
+      # 挂载 PM2 日志目录
+      - ./logs/pm2-logs:/root/.pm2/logs
 
     logging:
       driver: 'json-file'
@@ -23,6 +30,8 @@ services:
         max-size: '100m'
         max-file: '3'
 
-    # 添加命令以便测试缓存
-    # 可以通过 docker-compose run app sh 进入容器测试
-    # command: tail -f /dev/null  # 保持容器运行用于调试
+    # 在这里启动应用
+    command: ['/usr/local/bin/startup.sh']
+
+    # 调试模式：取消注释下面的命令来保持容器运行
+    # command: tail -f /dev/null
