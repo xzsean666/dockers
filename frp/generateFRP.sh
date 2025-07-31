@@ -11,7 +11,6 @@ source .env
 
 # 验证必需的环境变量
 required_vars=(
-    "FRP_VERSION"
     "FRP_PORT"
     "DASHBOARD_PORT"
     "DASHBOARD_USER"
@@ -92,11 +91,10 @@ cat > frp/server/docker-compose.yml << EOF
 version: '3'
 services:
   frps:
-    image: fatedier/frp:${FRP_VERSION}
+    image: snowdreamtech/frps:0.63.0-alpine
     container_name: frps
     restart: always
     network_mode: host
-    command: frps -c /etc/frp/frps.toml
     volumes:
       - ./frps.toml:/etc/frp/frps.toml
 EOF
@@ -128,11 +126,10 @@ cat > frp/client/docker-compose.yml << EOF
 version: '3'
 services:
   frpc:
-    image: fatedier/frp:${FRP_VERSION}
+    image: snowdreamtech/frpc:0.63.0-alpine
     container_name: frpc
     restart: always
     network_mode: host
-    command: frpc -c /etc/frp/frpc.toml
     volumes:
       - ./frpc.toml:/etc/frp/frpc.toml
 EOF
@@ -142,7 +139,7 @@ echo "Server configuration is in frp/server/"
 echo "Client configuration is in frp/client/"
 echo ""
 echo "Configuration summary:"
-echo "- FRP Version: $FRP_VERSION"
+echo "- FRP Version: snowdreamtech 0.63.0-alpine"
 echo "- FRP Port: $FRP_PORT"
 echo "- Dashboard: http://localhost:$DASHBOARD_PORT (${DASHBOARD_USER}/${DASHBOARD_PWD})"
 echo "- Allowed remote ports: $ALLOW_PORTS_START-$ALLOW_PORTS_END"

@@ -1,8 +1,5 @@
-FROM node:24.2.0
-
-# 设置 pnpm 环境变量（遵循官方文档建议）
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
+# 使用Node.js 20.12.2作为基础镜像
+FROM node:20.12.2
 
 # 创建并配置阿里云源
 RUN rm -rf /etc/apt/sources.list.d/* && \
@@ -20,7 +17,7 @@ RUN apt-get update && \
 # 创建工作目录
 WORKDIR /app
 
-# 复制 crontab 管理脚本并设置执行权限
+# 复制crontab管理脚本并设置执行权限
 COPY manage-crontab.sh /usr/local/bin/manage-crontab
 RUN chmod +x /usr/local/bin/manage-crontab
 RUN ln -s /usr/local/bin/manage-crontab /usr/local/bin/mc
@@ -28,12 +25,5 @@ RUN ln -s /usr/local/bin/manage-crontab /usr/local/bin/mc
 # 创建 cron 日志文件并设置适当的权限
 RUN touch /var/log/cron.log && chmod 0644 /var/log/cron.log
 
-# 配置 pnpm
-RUN pnpm config set package-import-method hardlink && \
-    pnpm config set symlink false
-
-# 启动 cron 服务
-RUN service cron start
-
-# 保持容器运行
-CMD ["tail", "-f", "/dev/null"]
+# 设置启动命令
+CMD ["sh", "-c", "cron && tail -f /var/log/cron.log"]

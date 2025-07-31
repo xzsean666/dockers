@@ -23,7 +23,6 @@ services:
     user: 'root'
     network_mode: host
     restart: unless-stopped
-    command: /usr/local/bin/start.sh
 
     logging:
       driver: 'json-file'
