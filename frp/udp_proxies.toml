@@ -1,0 +1,606 @@
+[[proxies]]
+name = "udp-60000"
+type = "udp"
+localPort = 60000
+remotePort = 60000
+
+[[proxies]]
+name = "udp-60001"
+type = "udp"
+localPort = 60001
+remotePort = 60001
+
+[[proxies]]
+name = "udp-60002"
+type = "udp"
+localPort = 60002
+remotePort = 60002
+
+[[proxies]]
+name = "udp-60003"
+type = "udp"
+localPort = 60003
+remotePort = 60003
+
+[[proxies]]
+name = "udp-60004"
+type = "udp"
+localPort = 60004
+remotePort = 60004
+
+[[proxies]]
+name = "udp-60005"
+type = "udp"
+localPort = 60005
+remotePort = 60005
+
+[[proxies]]
+name = "udp-60006"
+type = "udp"
+localPort = 60006
+remotePort = 60006
+
+[[proxies]]
+name = "udp-60007"
+type = "udp"
+localPort = 60007
+remotePort = 60007
+
+[[proxies]]
+name = "udp-60008"
+type = "udp"
+localPort = 60008
+remotePort = 60008
+
+[[proxies]]
+name = "udp-60009"
+type = "udp"
+localPort = 60009
+remotePort = 60009
+
+[[proxies]]
+name = "udp-60010"
+type = "udp"
+localPort = 60010
+remotePort = 60010
+
+[[proxies]]
+name = "udp-60011"
+type = "udp"
+localPort = 60011
+remotePort = 60011
+
+[[proxies]]
+name = "udp-60012"
+type = "udp"
+localPort = 60012
+remotePort = 60012
+
+[[proxies]]
+name = "udp-60013"
+type = "udp"
+localPort = 60013
+remotePort = 60013
+
+[[proxies]]
+name = "udp-60014"
+type = "udp"
+localPort = 60014
+remotePort = 60014
+
+[[proxies]]
+name = "udp-60015"
+type = "udp"
+localPort = 60015
+remotePort = 60015
+
+[[proxies]]
+name = "udp-60016"
+type = "udp"
+localPort = 60016
+remotePort = 60016
+
+[[proxies]]
+name = "udp-60017"
+type = "udp"
+localPort = 60017
+remotePort = 60017
+
+[[proxies]]
+name = "udp-60018"
+type = "udp"
+localPort = 60018
+remotePort = 60018
+
+[[proxies]]
+name = "udp-60019"
+type = "udp"
+localPort = 60019
+remotePort = 60019
+
+[[proxies]]
+name = "udp-60020"
+type = "udp"
+localPort = 60020
+remotePort = 60020
+
+[[proxies]]
+name = "udp-60021"
+type = "udp"
+localPort = 60021
+remotePort = 60021
+
+[[proxies]]
+name = "udp-60022"
+type = "udp"
+localPort = 60022
+remotePort = 60022
+
+[[proxies]]
+name = "udp-60023"
+type = "udp"
+localPort = 60023
+remotePort = 60023
+
+[[proxies]]
+name = "udp-60024"
+type = "udp"
+localPort = 60024
+remotePort = 60024
+
+[[proxies]]
+name = "udp-60025"
+type = "udp"
+localPort = 60025
+remotePort = 60025
+
+[[proxies]]
+name = "udp-60026"
+type = "udp"
+localPort = 60026
+remotePort = 60026
+
+[[proxies]]
+name = "udp-60027"
+type = "udp"
+localPort = 60027
+remotePort = 60027
+
+[[proxies]]
+name = "udp-60028"
+type = "udp"
+localPort = 60028
+remotePort = 60028
+
+[[proxies]]
+name = "udp-60029"
+type = "udp"
+localPort = 60029
+remotePort = 60029
+
+[[proxies]]
+name = "udp-60030"
+type = "udp"
+localPort = 60030
+remotePort = 60030
+
+[[proxies]]
+name = "udp-60031"
+type = "udp"
+localPort = 60031
+remotePort = 60031
+
+[[proxies]]
+name = "udp-60032"
+type = "udp"
+localPort = 60032
+remotePort = 60032
+
+[[proxies]]
+name = "udp-60033"
+type = "udp"
+localPort = 60033
+remotePort = 60033
+
+[[proxies]]
+name = "udp-60034"
+type = "udp"
+localPort = 60034
+remotePort = 60034
+
+[[proxies]]
+name = "udp-60035"
+type = "udp"
+localPort = 60035
+remotePort = 60035
+
+[[proxies]]
+name = "udp-60036"
+type = "udp"
+localPort = 60036
+remotePort = 60036
+
+[[proxies]]
+name = "udp-60037"
+type = "udp"
+localPort = 60037
+remotePort = 60037
+
+[[proxies]]
+name = "udp-60038"
+type = "udp"
+localPort = 60038
+remotePort = 60038
+
+[[proxies]]
+name = "udp-60039"
+type = "udp"
+localPort = 60039
+remotePort = 60039
+
+[[proxies]]
+name = "udp-60040"
+type = "udp"
+localPort = 60040
+remotePort = 60040
+
+[[proxies]]
+name = "udp-60041"
+type = "udp"
+localPort = 60041
+remotePort = 60041
+
+[[proxies]]
+name = "udp-60042"
+type = "udp"
+localPort = 60042
+remotePort = 60042
+
+[[proxies]]
+name = "udp-60043"
+type = "udp"
+localPort = 60043
+remotePort = 60043
+
+[[proxies]]
+name = "udp-60044"
+type = "udp"
+localPort = 60044
+remotePort = 60044
+
+[[proxies]]
+name = "udp-60045"
+type = "udp"
+localPort = 60045
+remotePort = 60045
+
+[[proxies]]
+name = "udp-60046"
+type = "udp"
+localPort = 60046
+remotePort = 60046
+
+[[proxies]]
+name = "udp-60047"
+type = "udp"
+localPort = 60047
+remotePort = 60047
+
+[[proxies]]
+name = "udp-60048"
+type = "udp"
+localPort = 60048
+remotePort = 60048
+
+[[proxies]]
+name = "udp-60049"
+type = "udp"
+localPort = 60049
+remotePort = 60049
+
+[[proxies]]
+name = "udp-60050"
+type = "udp"
+localPort = 60050
+remotePort = 60050
+
+[[proxies]]
+name = "udp-60051"
+type = "udp"
+localPort = 60051
+remotePort = 60051
+
+[[proxies]]
+name = "udp-60052"
+type = "udp"
+localPort = 60052
+remotePort = 60052
+
+[[proxies]]
+name = "udp-60053"
+type = "udp"
+localPort = 60053
+remotePort = 60053
+
+[[proxies]]
+name = "udp-60054"
+type = "udp"
+localPort = 60054
+remotePort = 60054
+
+[[proxies]]
+name = "udp-60055"
+type = "udp"
+localPort = 60055
+remotePort = 60055
+
+[[proxies]]
+name = "udp-60056"
+type = "udp"
+localPort = 60056
+remotePort = 60056
+
+[[proxies]]
+name = "udp-60057"
+type = "udp"
+localPort = 60057
+remotePort = 60057
+
+[[proxies]]
+name = "udp-60058"
+type = "udp"
+localPort = 60058
+remotePort = 60058
+
+[[proxies]]
+name = "udp-60059"
+type = "udp"
+localPort = 60059
+remotePort = 60059
+
+[[proxies]]
+name = "udp-60060"
+type = "udp"
+localPort = 60060
+remotePort = 60060
+
+[[proxies]]
+name = "udp-60061"
+type = "udp"
+localPort = 60061
+remotePort = 60061
+
+[[proxies]]
+name = "udp-60062"
+type = "udp"
+localPort = 60062
+remotePort = 60062
+
+[[proxies]]
+name = "udp-60063"
+type = "udp"
+localPort = 60063
+remotePort = 60063
+
+[[proxies]]
+name = "udp-60064"
+type = "udp"
+localPort = 60064
+remotePort = 60064
+
+[[proxies]]
+name = "udp-60065"
+type = "udp"
+localPort = 60065
+remotePort = 60065
+
+[[proxies]]
+name = "udp-60066"
+type = "udp"
+localPort = 60066
+remotePort = 60066
+
+[[proxies]]
+name = "udp-60067"
+type = "udp"
+localPort = 60067
+remotePort = 60067
+
+[[proxies]]
+name = "udp-60068"
+type = "udp"
+localPort = 60068
+remotePort = 60068
+
+[[proxies]]
+name = "udp-60069"
+type = "udp"
+localPort = 60069
+remotePort = 60069
+
+[[proxies]]
+name = "udp-60070"
+type = "udp"
+localPort = 60070
+remotePort = 60070
+
+[[proxies]]
+name = "udp-60071"
+type = "udp"
+localPort = 60071
+remotePort = 60071
+
+[[proxies]]
+name = "udp-60072"
+type = "udp"
+localPort = 60072
+remotePort = 60072
+
+[[proxies]]
+name = "udp-60073"
+type = "udp"
+localPort = 60073
+remotePort = 60073
+
+[[proxies]]
+name = "udp-60074"
+type = "udp"
+localPort = 60074
+remotePort = 60074
+
+[[proxies]]
+name = "udp-60075"
+type = "udp"
+localPort = 60075
+remotePort = 60075
+
+[[proxies]]
+name = "udp-60076"
+type = "udp"
+localPort = 60076
+remotePort = 60076
+
+[[proxies]]
+name = "udp-60077"
+type = "udp"
+localPort = 60077
+remotePort = 60077
+
+[[proxies]]
+name = "udp-60078"
+type = "udp"
+localPort = 60078
+remotePort = 60078
+
+[[proxies]]
+name = "udp-60079"
+type = "udp"
+localPort = 60079
+remotePort = 60079
+
+[[proxies]]
+name = "udp-60080"
+type = "udp"
+localPort = 60080
+remotePort = 60080
+
+[[proxies]]
+name = "udp-60081"
+type = "udp"
+localPort = 60081
+remotePort = 60081
+
+[[proxies]]
+name = "udp-60082"
+type = "udp"
+localPort = 60082
+remotePort = 60082
+
+[[proxies]]
+name = "udp-60083"
+type = "udp"
+localPort = 60083
+remotePort = 60083
+
+[[proxies]]
+name = "udp-60084"
+type = "udp"
+localPort = 60084
+remotePort = 60084
+
+[[proxies]]
+name = "udp-60085"
+type = "udp"
+localPort = 60085
+remotePort = 60085
+
+[[proxies]]
+name = "udp-60086"
+type = "udp"
+localPort = 60086
+remotePort = 60086
+
+[[proxies]]
+name = "udp-60087"
+type = "udp"
+localPort = 60087
+remotePort = 60087
+
+[[proxies]]
+name = "udp-60088"
+type = "udp"
+localPort = 60088
+remotePort = 60088
+
+[[proxies]]
+name = "udp-60089"
+type = "udp"
+localPort = 60089
+remotePort = 60089
+
+[[proxies]]
+name = "udp-60090"
+type = "udp"
+localPort = 60090
+remotePort = 60090
+
+[[proxies]]
+name = "udp-60091"
+type = "udp"
+localPort = 60091
+remotePort = 60091
+
+[[proxies]]
+name = "udp-60092"
+type = "udp"
+localPort = 60092
+remotePort = 60092
+
+[[proxies]]
+name = "udp-60093"
+type = "udp"
+localPort = 60093
+remotePort = 60093
+
+[[proxies]]
+name = "udp-60094"
+type = "udp"
+localPort = 60094
+remotePort = 60094
+
+[[proxies]]
+name = "udp-60095"
+type = "udp"
+localPort = 60095
+remotePort = 60095
+
+[[proxies]]
+name = "udp-60096"
+type = "udp"
+localPort = 60096
+remotePort = 60096
+
+[[proxies]]
+name = "udp-60097"
+type = "udp"
+localPort = 60097
+remotePort = 60097
+
+[[proxies]]
+name = "udp-60098"
+type = "udp"
+localPort = 60098
+remotePort = 60098
+
+[[proxies]]
+name = "udp-60099"
+type = "udp"
+localPort = 60099
+remotePort = 60099
+
+[[proxies]]
+name = "udp-60100"
+type = "udp"
+localPort = 60100
+remotePort = 60100
+
