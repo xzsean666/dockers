@@ -1,0 +1,19 @@
+# 基础配置
+bindAddr = "0.0.0.0"
+bindPort = 7000
+
+# Dashboard配置
+webServer.addr = "0.0.0.0"
+webServer.port = 7500
+webServer.user = "admin"
+webServer.password = "iZ2vc2nxxawzr0z0kfgvkmZfrp"
+
+# 认证配置
+auth.method = "token"
+auth.token = "iZ2vc2nxxawzr0z0kfgvkmZfrp"
+
+# 端口配置
+transport.maxPoolCount = 10
+allowPorts = [
+    { start = 10000, end = 10010 }
+]

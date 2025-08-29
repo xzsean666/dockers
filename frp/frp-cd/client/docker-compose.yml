@@ -1,0 +1,9 @@
+version: '3'
+services:
+  frpc:
+    image: snowdreamtech/frpc:0.63.0-alpine
+    container_name: frpc
+    restart: always
+    network_mode: host
+    volumes:
+      - ./frpc.toml:/etc/frp/frpc.toml

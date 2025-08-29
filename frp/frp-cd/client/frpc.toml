@@ -1,0 +1,60 @@
+serverAddr = "47.109.17.166"
+serverPort = 7000
+auth.token = "iZ2vc2nxxawzr0z0kfgvkmZfrp"
+
+# 端口转发配置
+[[proxies]]
+name = "tcp-10000"
+type = "tcp"
+localPort = 10000
+remotePort = 10000
+[[proxies]]
+name = "tcp-10001"
+type = "tcp"
+localPort = 10001
+remotePort = 10001
+[[proxies]]
+name = "tcp-10002"
+type = "tcp"
+localPort = 10002
+remotePort = 10002
+[[proxies]]
+name = "tcp-10003"
+type = "tcp"
+localPort = 10003
+remotePort = 10003
+[[proxies]]
+name = "tcp-10004"
+type = "tcp"
+localPort = 10004
+remotePort = 10004
+[[proxies]]
+name = "tcp-10005"
+type = "tcp"
+localPort = 10005
+remotePort = 10005
+[[proxies]]
+name = "tcp-10006"
+type = "tcp"
+localPort = 10006
+remotePort = 10006
+[[proxies]]
+name = "tcp-10007"
+type = "tcp"
+localPort = 10007
+remotePort = 10007
+[[proxies]]
+name = "tcp-10008"
+type = "tcp"
+localPort = 10008
+remotePort = 10008
+[[proxies]]
+name = "tcp-10009"
+type = "tcp"
+localPort = 10009
+remotePort = 10009
+[[proxies]]
+name = "tcp-10010"
+type = "tcp"
+localPort = 10010
+remotePort = 10010
