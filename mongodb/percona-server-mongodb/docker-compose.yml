@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: percona/percona-server-mongodb:8.0
+    container_name: ${CONTAINER_NAME}
+    restart: always
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+    ports:
+      - '${PORT}:27017'
+    volumes:
+      - ./data:/data
+    command: mongod --bind_ip_all
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # PBM (Percona Backup for MongoDB) 容器
+  pbm:
+    image: percona/percona-backup-mongodb:2
+    container_name: ${CONTAINER_NAME}-pbm
+    restart: always
+    environment:
+      - PBM_MONGODB_URI=mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/admin?authSource=admin
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      - S3_ENDPOINT_URL=${S3_ENDPOINT_URL}
+      - S3_PATH_STYLE=${S3_PATH_STYLE}
+      - S3_PREFIX=${S3_PREFIX}
+    volumes:
+      - ./pbm-logs:/var/log/pbm
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "sleep 30 && 
+             pbm config --set storage.type=s3 &&
+             pbm config --set storage.s3.region=${AWS_DEFAULT_REGION} &&
+             pbm config --set storage.s3.bucket=${S3_BUCKET} &&
+             [ -n \"${S3_ENDPOINT_URL}\" ] && pbm config --set storage.s3.endpointUrl=${S3_ENDPOINT_URL};
+             [ \"${S3_PATH_STYLE}\" = \"true\" ] && pbm config --set storage.s3.forcePathStyle=true;
+             [ -n \"${S3_PREFIX}\" ] && pbm config --set storage.s3.prefix=${S3_PREFIX};
+             pbm config --set pitr.enabled=true &&
+             pbm config --set pitr.oplogSpanMin=10 &&
+             exec pbm-agent"

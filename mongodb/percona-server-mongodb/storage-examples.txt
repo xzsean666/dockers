@@ -1,0 +1,53 @@
+# =======================================================================
+# Percona MongoDB S3 兼容存储配置示例
+# 根据您使用的存储服务，复制对应的配置到 .env 文件中
+# =======================================================================
+
+# MongoDB 基础配置（所有服务都需要）
+CONTAINER_NAME=percona-mongodb
+MONGO_ROOT_USERNAME=admin  
+MONGO_ROOT_PASSWORD=password123
+
+# =======================================================================
+# 1. AWS S3 (默认配置)
+# =======================================================================
+AWS_ACCESS_KEY_ID=your-aws-access-key
+AWS_SECRET_ACCESS_KEY=your-aws-secret-key
+AWS_DEFAULT_REGION=us-east-1
+S3_BUCKET=your-s3-bucket
+S3_ENDPOINT_URL=
+S3_PATH_STYLE=false
+S3_PREFIX=mongodb-backups/
+
+# =======================================================================
+# 2. Cloudflare R2 配置
+# =======================================================================
+# AWS_ACCESS_KEY_ID=your-r2-api-token
+# AWS_SECRET_ACCESS_KEY=your-r2-secret-key
+# AWS_DEFAULT_REGION=auto
+# S3_BUCKET=your-r2-bucket
+# S3_ENDPOINT_URL=https://your-account-id.r2.cloudflarestorage.com
+# S3_PATH_STYLE=false
+# S3_PREFIX=mongodb-backups/
+
+# =======================================================================  
+# 3. Backblaze B2 配置
+# =======================================================================
+# AWS_ACCESS_KEY_ID=your-b2-keyid
+# AWS_SECRET_ACCESS_KEY=your-b2-application-key
+# AWS_DEFAULT_REGION=us-west-004
+# S3_BUCKET=your-b2-bucket
+# S3_ENDPOINT_URL=https://s3.us-west-004.backblazeb2.com
+# S3_PATH_STYLE=false
+# S3_PREFIX=mongodb-backups/
+
+# =======================================================================
+# 4. MinIO 配置
+# =======================================================================
+# AWS_ACCESS_KEY_ID=your-minio-access-key
+# AWS_SECRET_ACCESS_KEY=your-minio-secret-key
+# AWS_DEFAULT_REGION=us-east-1
+# S3_BUCKET=your-minio-bucket
+# S3_ENDPOINT_URL=https://your-minio-server.com
+# S3_PATH_STYLE=true
+# S3_PREFIX=mongodb-backups/
