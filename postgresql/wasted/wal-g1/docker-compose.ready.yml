@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # 选项1: 使用wald镜像 (PostgreSQL + WAL-G 一体化)
+  postgres-wald:
+    image: lafayettegabe/wald:latest
+    container_name: postgres-wald
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRESQL_DATABASE:-testdb}
+      - POSTGRES_USER=${POSTGRESQL_USERNAME:-postgres}  
+      - POSTGRES_PASSWORD=${POSTGRESQL_PASSWORD:-password}
+      # WAL-G 配置
+      - WALG_S3_PREFIX=${WALG_S3_PREFIX}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ENDPOINT_URL=${S3_ENDPOINT_URL}
+      - WALG_COMPRESSION_METHOD=brotli
+    ports:
+      - "${PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./backup-logs:/backup-logs
+    networks:
+      - postgres-net
+
+  # 选项2: 分离式 - PostgreSQL + 独立WAL-G容器
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres-main
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRESQL_DATABASE:-testdb}
+      - POSTGRES_USER=${POSTGRESQL_USERNAME:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRESQL_PASSWORD:-password}
+    ports:
+      - "${PORT:-5433}:5432"  # 注意端口避免冲突
+    volumes:
+      - postgres-data-2:/var/lib/postgresql/data
+    networks:
+      - postgres-net
+    profiles: ["separate"]
+
+  walg-backup:
+    image: ikulakov/postgres-wal-g:latest  # 另一个现成镜像
+    container_name: walg-backup
+    restart: unless-stopped
+    environment:
+      - PGHOST=postgres
+      - PGPORT=5432
+      - PGUSER=${POSTGRESQL_USERNAME:-postgres}
+      - PGPASSWORD=${POSTGRESQL_PASSWORD:-password}
+      - PGDATABASE=${POSTGRESQL_DATABASE:-testdb}
+      - WALG_S3_PREFIX=${WALG_S3_PREFIX}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ENDPOINT_URL=${S3_ENDPOINT_URL}
+    volumes:
+      - postgres-data-2:/var/lib/postgresql/data:ro
+      - ./backup-logs:/backup-logs
+    depends_on:
+      - postgres
+    networks:
+      - postgres-net
+    profiles: ["separate"]
+
+volumes:
+  postgres-data:
+  postgres-data-2:
+
+networks:
+  postgres-net:
+    driver: bridge

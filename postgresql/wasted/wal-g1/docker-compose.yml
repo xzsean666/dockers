@@ -1,0 +1,86 @@
+version: '3'
+
+services:
+  postgresql-master:
+    image: 'bitnami/postgresql:17.5.0'
+    container_name: ${CONTAINER_NAME}
+    restart: always
+    env_file: .env
+    user: root
+    environment:
+      - POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE}
+      - POSTGRESQL_USERNAME=${POSTGRESQL_USERNAME}
+      - POSTGRESQL_PASSWORD=${POSTGRESQL_PASSWORD}
+      - POSTGRESQL_REPLICATION_USER=${POSTGRESQL_REPLICATION_USER}
+      - POSTGRESQL_REPLICATION_PASSWORD=${POSTGRESQL_REPLICATION_PASSWORD}
+      - POSTGRESQL_POSTGRES_PASSWORD=${POSTGRESQL_PASSWORD}
+      # WAL-G Configuration
+      - POSTGRESQL_WAL_LEVEL=replica
+      - POSTGRESQL_ARCHIVE_MODE=on
+      - POSTGRESQL_ARCHIVE_COMMAND=wal-g wal-push %p
+      - POSTGRESQL_RESTORE_COMMAND=wal-g wal-fetch %f %p
+    ports:
+      - '${PORT}:5432'
+    volumes:
+      - './data:/bitnami/postgresql'
+      - 'postgresql-data:/bitnami/postgresql/data'
+    networks:
+      - postgres-backup
+
+  wal-g-backup:
+    image: lafayettegabe/wald:latest  # 现成的WAL-G镜像
+    container_name: ${CONTAINER_NAME}-walg
+    restart: always
+    env_file: .env
+    environment:
+      # PostgreSQL Connection
+      - POSTGRES_HOST=postgresql-master
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRESQL_USERNAME}
+      - POSTGRES_PASSWORD=${POSTGRESQL_PASSWORD}
+      - PGDATA=/postgresql-data
+      
+      # WAL-G Configuration  
+      - WALG_S3_PREFIX=${WALG_S3_PREFIX}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-auto}
+      - AWS_REGION=${AWS_DEFAULT_REGION:-auto}
+      - AWS_S3_FORCE_PATH_STYLE=${AWS_S3_FORCE_PATH_STYLE:-true}
+      - S3_ENDPOINT_URL=${S3_ENDPOINT_URL}
+      - AWS_ENDPOINT_URL=${S3_ENDPOINT_URL}
+      - WALG_S3_ENDPOINT=${S3_ENDPOINT_URL}
+      - WALG_S3_USE_SSL=${WALG_S3_USE_SSL:-true}
+      - AWS_S3_DISABLE_SSL=${AWS_S3_DISABLE_SSL:-false}
+      - WALG_S3_CA_CERT_FILE=${WALG_S3_CA_CERT_FILE}
+      
+      # Backup Settings
+      - WALG_COMPRESSION_METHOD=${WALG_COMPRESSION_METHOD:-brotli}
+      - WALG_DELTA_MAX_STEPS=${WALG_DELTA_MAX_STEPS:-6}
+      - BACKUP_INTERVAL=${BACKUP_INTERVAL:-21600}
+      
+      # Performance Settings
+      - WALG_UPLOAD_CONCURRENCY=${WALG_UPLOAD_CONCURRENCY:-4}
+      - WALG_DOWNLOAD_CONCURRENCY=${WALG_DOWNLOAD_CONCURRENCY:-4}
+      - WALG_DISK_RATE_LIMIT=${WALG_DISK_RATE_LIMIT:-0}
+      - WALG_NETWORK_RATE_LIMIT=${WALG_NETWORK_RATE_LIMIT:-0}
+      
+      # Logging
+      - WALG_LOG_LEVEL=${WALG_LOG_LEVEL:-INFO}
+      
+    volumes:
+      - 'postgresql-data:/postgresql-data:ro'  # Read-only access to PostgreSQL data
+      - './backup-logs:/backup/logs'           # Backup logs
+    depends_on:
+      - postgresql-master
+    networks:
+      - postgres-backup
+
+volumes:
+  postgresql-data:
+
+networks:
+  postgres-backup:
+    driver: bridge
+
+
