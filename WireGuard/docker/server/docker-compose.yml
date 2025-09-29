@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  wireguard-server:
+    image: linuxserver/wireguard:latest
+    container_name: wireguard-server
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      # 用户和组ID（可选，默认值: 1000）
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      # 时区（可选，默认值: UTC）
+      - TZ=${TZ:-UTC}
+      # 服务器地址（重要，建议设置，默认: auto）
+      - SERVERURL=${SERVER_URL:-auto}
+      # 服务器端口（可选，默认值: 51820）
+      - SERVERPORT=${SERVER_PORT:-51820}
+      # 客户端数量（可选，默认值: 1）
+      - PEERS=${PEERS_COUNT:-1}
+      # DNS服务器（可选，默认值: auto）
+      - PEERDNS=${PEER_DNS:-auto}
+      # 内部子网（可选，默认值: 10.13.13.0）
+      - INTERNAL_SUBNET=${INTERNAL_SUBNET:-10.13.13.0}
+      # 允许的IP（可选，默认值: 0.0.0.0/0）
+      - ALLOWEDIPS=${ALLOWED_IPS:-0.0.0.0/0}
+      # 日志配置（可选，默认值: false）
+      - LOG_CONFS=${LOG_CONFS:-false}
+    volumes:
+      # 配置文件路径（必须设置）
+      - ${CONFIG_PATH:-./config}:/config
+      - /lib/modules:/lib/modules:ro
+    ports:
+      # WireGuard 端口（必须暴露）
+      - '${SERVER_PORT:-51820}:51820/udp'
+      # Web UI 端口（可选）
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    restart: unless-stopped
+    networks:
+      - wireguard
+
+networks:
+  wireguard:
+    driver: bridge
