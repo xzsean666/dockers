@@ -4,7 +4,7 @@ ignition/deployments
 # Hardhat files
 /cache
 /artifacts
-
+clash/config
 # TypeChain files
 /typechain
 /typechain-types
