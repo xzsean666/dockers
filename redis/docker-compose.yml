@@ -8,3 +8,4 @@ services:
       - "6379:6379"
     volumes:
       - ./data:/data
+    # command: ["redis-server", "--requirepass", "666.", "--appendonly", "yes"]
