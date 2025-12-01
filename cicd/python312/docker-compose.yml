@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  trade-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trade-live-monitor
+    network_mode: host
+    volumes:
+      - .:/app
+    command: /docker-entrypoint.sh
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ENABLE_CICD=${ENABLE_CICD:-false}
+      - START_COMMAND=${START_COMMAND:-python main.py}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      # - HTTP_PROXY=http://astrid:@31.58.137.32:13128
+      # - HTTPS_PROXY=http://astrid:@31.58.137.32:13128
+      # - NO_PROXY=localhost,127.0.0.1
+    restart: unless-stopped
