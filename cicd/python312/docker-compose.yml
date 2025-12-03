@@ -17,7 +17,7 @@ services:
       - ENABLE_CICD=${ENABLE_CICD:-false}
       - START_COMMAND=${START_COMMAND:-python main.py}
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
-      - HTTP_PROXY=${HTTP_PROXY}
-      - HTTPS_PROXY=${HTTP_PROXY}
-      - NO_PROXY=${NO_PROXY}
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTP_PROXY:-}
+      - NO_PROXY=${NO_PROXY:-}
     restart: unless-stopped
