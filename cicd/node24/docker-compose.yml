@@ -1,21 +1,21 @@
-version: '3.8'
-
 services:
   trade-monitor:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: trade-live-monitor
+    container_name: trade-dashboard-backend
     network_mode: host
     volumes:
       - .:/app
+      - /app/node_modules
     command: /docker-entrypoint.sh
     env_file:
       - .env
     environment:
+      - CI=true
       - PYTHONUNBUFFERED=1
       - ENABLE_CICD=${ENABLE_CICD:-false}
-      - START_COMMAND=${START_COMMAND:-python main.py}
+      - START_COMMAND=${START_COMMAND:-pnpm install && pnpm build && pnpm start:prod}
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
       - HTTP_PROXY=${HTTP_PROXY}
       - HTTPS_PROXY=${HTTP_PROXY}

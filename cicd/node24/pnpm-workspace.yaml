@@ -1,0 +1,2 @@
+# 允许所有依赖运行构建脚本
+dangerouslyAllowAllBuilds: true
