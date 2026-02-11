@@ -1,0 +1,23 @@
+services:
+  backup:
+    build: .
+    container_name: folder-backup
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # ============================================================
+      # 备份源目录 - 挂载到 /sources/ 下的子目录
+      # 所有 /sources/ 下的子目录都会被自动备份
+      # ============================================================
+      # - /path/to/your/data1:/sources/data1:ro
+      # - /path/to/your/data2:/sources/data2:ro
+      # - /path/to/your/configs:/sources/configs:ro
+
+      # ============================================================
+      # 本地备份目录（可选）
+      # 如果不挂载，仅备份到云端
+      # ============================================================
+      # - /path/to/local/backups:/backups
+    environment:
+      - TZ=Asia/Shanghai

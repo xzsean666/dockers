@@ -3,9 +3,16 @@ version: "3.8"
 services:
   redis:
     image: redis:8.2
+    container_name: ${CONTAINER_NAME:-redis}
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - ./data:/data
-    # command: ["redis-server", "--requirepass", "666.", "--appendonly", "yes"]
+    env_file:
+      - .env
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+    command: >
+      sh -c "if [ -n \"$REDIS_PASSWORD\" ]; then redis-server --requirepass \"$REDIS_PASSWORD\" --appendonly yes; else redis-server --appendonly yes; fi"

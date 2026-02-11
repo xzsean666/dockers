@@ -8,6 +8,7 @@ services:
     env_file: .env
     user: root
     environment:
+      - POSTGRESQL_REPLICATION_MODE=master
       - POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE}
       - POSTGRESQL_USERNAME=${POSTGRESQL_USERNAME}
       - POSTGRESQL_PASSWORD=${POSTGRESQL_PASSWORD}
@@ -18,5 +19,3 @@ services:
       - '${PORT}:5432'
     volumes:
       - './data:/bitnami/postgresql/data'
-
-

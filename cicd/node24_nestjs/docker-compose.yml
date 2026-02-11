@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: trade-dashboard-backend
+    container_name: ${CONTAINER_NAME:-node24}
     network_mode: host
     volumes:
       - .:/app

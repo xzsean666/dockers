@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: trade-live-monitor
+    container_name: ${CONTAINER_NAME:-python312}
     network_mode: host
     volumes:
       - .:/app
