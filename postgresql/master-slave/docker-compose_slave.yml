@@ -2,7 +2,7 @@ version: '3'
 
 services:
   postgresql-slave:
-    image: 'xzsean/postgresql:17.5.0'
+    image: 'xzsean/postgresql:18.2'
     container_name: ${CONTAINER_NAME}
     restart: always
     env_file: .env
