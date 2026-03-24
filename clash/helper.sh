@@ -44,6 +44,11 @@ pause() {
     read -p "按 Enter 继续..."
 }
 
+# 检查 Clash 服务是否正在运行
+is_service_running() {
+    docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"
+}
+
 # 加载 Docker 镜像
 load_image() {
     clear_screen
@@ -89,6 +94,100 @@ start_service() {
     echo ""
     fix_config_internal
     
+    pause
+}
+
+# 导入订阅链接
+import_subscription() {
+    clear_screen
+    echo -e "${CYAN}=== 导入 Clash 订阅链接 ===${NC}\n"
+
+    local config_dir="$SCRIPT_DIR/config"
+    local config_file="$config_dir/config.yaml"
+    local tmp_file=""
+    local backup_file=""
+    local subscription_url=""
+
+    mkdir -p "$config_dir"
+
+    info "订阅将下载到: $config_file"
+    echo ""
+    read -r -p "请输入订阅链接: " subscription_url
+
+    if [ -z "$subscription_url" ]; then
+        error "订阅链接不能为空"
+        pause
+        return 1
+    fi
+
+    tmp_file="$(mktemp "$config_dir/config.yaml.tmp.XXXXXX")" || {
+        error "无法创建临时文件"
+        pause
+        return 1
+    }
+
+    info "正在下载订阅..."
+    if ! curl -fsSL --connect-timeout 15 --retry 2 "$subscription_url" -o "$tmp_file"; then
+        rm -f "$tmp_file"
+        error "订阅下载失败，请检查链接或网络"
+        pause
+        return 1
+    fi
+
+    if [ ! -s "$tmp_file" ]; then
+        rm -f "$tmp_file"
+        error "下载到的配置为空"
+        pause
+        return 1
+    fi
+
+    if head -n 5 "$tmp_file" | grep -Eiq '<!doctype|<html'; then
+        warning "下载内容看起来像网页，而不是 Clash 配置"
+        echo ""
+        sed -n '1,10p' "$tmp_file"
+        rm -f "$tmp_file"
+        pause
+        return 1
+    fi
+
+    if ! grep -Eq '^[[:space:]]*(proxies|proxy-groups|proxy-providers|rules|port|mixed-port|socks-port):' "$tmp_file"; then
+        warning "下载内容看起来不像 Clash YAML 配置"
+        warning "常见原因：订阅链接失效，或返回的是其他格式"
+        echo ""
+        sed -n '1,10p' "$tmp_file"
+        rm -f "$tmp_file"
+        pause
+        return 1
+    fi
+
+    if [ -f "$config_file" ]; then
+        backup_file="${config_file}.backup.$(date +%Y%m%d_%H%M%S)"
+        cp "$config_file" "$backup_file" || {
+            rm -f "$tmp_file"
+            error "现有配置备份失败，已取消覆盖"
+            pause
+            return 1
+        }
+        info "已备份现有配置: $backup_file"
+    fi
+
+    mv "$tmp_file" "$config_file" || {
+        rm -f "$tmp_file"
+        error "保存配置文件失败"
+        pause
+        return 1
+    }
+
+    success "订阅已导入: $config_file"
+    info "正在修复配置文件..."
+    echo ""
+    fix_config_internal
+
+    if is_service_running; then
+        echo ""
+        warning "Clash 服务正在运行，需要重启服务使新订阅生效"
+    fi
+
     pause
 }
 
@@ -188,7 +287,7 @@ status_service() {
     echo -e "${CYAN}=== Clash 服务状态 ===${NC}\n"
     
     info "检查 Clash 服务状态..."
-    if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+    if is_service_running; then
         success "Clash 服务正在运行"
         echo ""
         docker ps --filter "name=${CONTAINER_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
@@ -485,23 +584,24 @@ EOF
     
     echo ""
     echo -e "${YELLOW}【配置管理】${NC}"
-    echo -e "  ${GREEN}6)${NC}  修复配置文件 (external-controller)"
+    echo -e "  ${GREEN}6)${NC}  导入订阅链接"
+    echo -e "  ${GREEN}7)${NC}  修复配置文件 (external-controller / allow-lan)"
     
     echo ""
     echo -e "${YELLOW}【代理测试】${NC}"
-    echo -e "  ${GREEN}7)${NC}  测试 HTTP 代理"
-    echo -e "  ${GREEN}8)${NC}  测试 SOCKS5 代理"
-    echo -e "  ${GREEN}9)${NC}  测试所有代理"
+    echo -e "  ${GREEN}8)${NC}  测试 HTTP 代理"
+    echo -e "  ${GREEN}9)${NC}  测试 SOCKS5 代理"
+    echo -e "  ${GREEN}10)${NC} 测试所有代理"
     
     echo ""
     echo -e "${YELLOW}【API 控制】${NC}"
-    echo -e "  ${GREEN}10)${NC} 获取代理列表"
-    echo -e "  ${GREEN}11)${NC} 获取运行状态"
-    echo -e "  ${GREEN}12)${NC} 切换代理"
+    echo -e "  ${GREEN}11)${NC} 获取代理列表"
+    echo -e "  ${GREEN}12)${NC} 获取运行状态"
+    echo -e "  ${GREEN}13)${NC} 切换代理"
     
     echo ""
     echo -e "${YELLOW}【其他】${NC}"
-    echo -e "  ${GREEN}13)${NC} 查看实时日志"
+    echo -e "  ${GREEN}14)${NC} 查看实时日志"
     echo -e "  ${GREEN}0)${NC}  ${RED}退出${NC}"
     
     echo ""
@@ -524,6 +624,7 @@ show_about() {
 主要功能:
   ✓ Docker 镜像管理（加载/卸载）
   ✓ 服务生命周期控制（启动/停止/重启）
+  ✓ 订阅链接下载（保存到 config/config.yaml）
   ✓ 配置文件修复（external-controller）
   ✓ 代理连接测试（HTTP/SOCKS5）
   ✓ RESTful API 控制
@@ -546,7 +647,7 @@ main_loop() {
     while true; do
         show_main_menu
         
-        read -p "请选择操作 (输入数字 0-13): " choice
+        read -p "请选择操作 (输入数字 0-14): " choice
         
         case "$choice" in
             1)
@@ -565,33 +666,36 @@ main_loop() {
                 status_service
                 ;;
             6)
-                fix_config
+                import_subscription
                 ;;
             7)
+                fix_config
+                ;;
+            8)
                 clear_screen
                 echo -e "${CYAN}=== 测试 HTTP 代理 ===${NC}\n"
                 test_http_proxy
                 pause
                 ;;
-            8)
+            9)
                 clear_screen
                 echo -e "${CYAN}=== 测试 SOCKS5 代理 ===${NC}\n"
                 test_socks5_proxy
                 pause
                 ;;
-            9)
+            10)
                 test_all_proxies
                 ;;
-            10)
+            11)
                 get_proxies
                 ;;
-            11)
+            12)
                 get_proxy_status
                 ;;
-            12)
+            13)
                 switch_proxy_interactive
                 ;;
-            13)
+            14)
                 view_logs
                 ;;
             0)
@@ -602,7 +706,7 @@ main_loop() {
                 ;;
             *)
                 clear_screen
-                error "无效的选择，请输入 0-13 之间的数字"
+                error "无效的选择，请输入 0-14 之间的数字"
                 sleep 1
                 ;;
         esac
