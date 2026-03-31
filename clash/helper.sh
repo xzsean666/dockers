@@ -7,6 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TAR_FILE="$SCRIPT_DIR/clash.tar"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
 CONTAINER_NAME="clash"
+CONFIG_FILE="$SCRIPT_DIR/config/config.yaml"
 
 # 颜色定义
 RED='\033[0;31m'
@@ -47,6 +48,23 @@ pause() {
 # 检查 Clash 服务是否正在运行
 is_service_running() {
     docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"
+}
+
+get_api_secret() {
+    if [ -f "$CONFIG_FILE" ]; then
+        sed -n 's/^secret:[[:space:]]*//p' "$CONFIG_FILE" | head -n 1
+    fi
+}
+
+clash_api_curl() {
+    local secret
+    secret="$(get_api_secret)"
+
+    if [ -n "$secret" ]; then
+        curl -s -H "Authorization: Bearer $secret" "$@"
+    else
+        curl -s "$@"
+    fi
 }
 
 # 加载 Docker 镜像
@@ -369,7 +387,7 @@ get_proxies() {
     info "获取 Clash 代理列表..."
     echo ""
     
-    response=$(curl -s "$api_url" 2>&1)
+    response=$(clash_api_curl "$api_url" 2>&1)
     if echo "$response" | grep -q "proxies"; then
         echo "$response" | python3 -m json.tool 2>/dev/null || echo "$response"
         success "代理列表获取成功"
@@ -390,7 +408,7 @@ get_proxy_status() {
     info "获取 Clash 状态..."
     echo ""
     
-    response=$(curl -s "$api_url" 2>&1)
+    response=$(clash_api_curl "$api_url" 2>&1)
     if [ -n "$response" ]; then
         echo "$response" | python3 -m json.tool 2>/dev/null || echo "$response"
         success "状态信息获取成功"
@@ -484,7 +502,7 @@ switch_proxy_interactive() {
     # 如果用 API 获取不到，尝试从 API 获取
     if [ ${#proxies[@]} -eq 0 ]; then
         info "从配置文件解析失败，尝试从 API 获取代理列表..."
-        local api_response=$(curl -s "http://127.0.0.1:17892/proxies" 2>&1)
+        local api_response=$(clash_api_curl "http://127.0.0.1:17892/proxies" 2>&1)
         
         if echo "$api_response" | grep -q '"proxies"'; then
             # 从 API 响应中提取代理名称（正确处理含有空格的名称）
@@ -538,7 +556,7 @@ except: pass
     
     # 调用 API 切换代理
     local api_url="http://127.0.0.1:17892/proxies/${selector}"
-    response=$(curl -s -X PUT "$api_url" \
+    response=$(clash_api_curl -X PUT "$api_url" \
         -H "Content-Type: application/json" \
         -d "{\"name\":\"$proxy_name\"}" 2>&1)
     
