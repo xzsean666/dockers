@@ -1,20 +1,25 @@
-version: '3.7'
-
 services:
   clash:
     image: xzsean/clash:v1.18.0
     container_name: clash
     restart: unless-stopped
     ports:
-      - "17890:7890"  # HTTP 代理端口
-      - "17891:7891"  # SOCKS5 代理端口（如果配置中启用）
+      - "127.0.0.1:17890:7890"  # HTTP 代理端口（仅宿主机本地访问）
+      - "127.0.0.1:17891:7891"  # SOCKS5 代理端口（仅宿主机本地访问）
       - "127.0.0.1:17892:9090"  # 控制面板端口（仅宿主机本地访问）
     volumes:
       - ./config:/root/.config/clash  # 挂载配置目录
     environment:
       - TZ=Asia/Shanghai  # 设置时区，可按需修改
+    networks:
+      - clash_internal
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
+
+networks:
+  clash_internal:
+    name: clash_internal
+    driver: bridge
