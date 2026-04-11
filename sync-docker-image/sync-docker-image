@@ -1,0 +1,332 @@
+#!/bin/bash
+
+set -euo pipefail
+
+DOCKER_CMD="docker"
+
+usage() {
+    cat <<'EOF'
+Usage:
+  ./sync-docker-image [options] SOURCE_IMAGE [TARGET_IMAGE]
+
+Examples:
+  ./sync-docker-image ghcr.io/example/app:1.2.3 docker.io/myuser/app:1.2.3
+  ./sync-docker-image ghcr.io/example/app:1.2.3 myuser/app:1.2.3
+  DOCKERHUB_NAMESPACE=myuser ./sync-docker-image ghcr.io/example/app:1.2.3
+
+Options:
+  --require-platforms LIST
+                        Optional comma-separated platforms that must exist
+                        before sync, for example: linux/amd64,linux/arm64
+  --docker-cmd CMD      Docker CLI command to use
+                        Default: docker
+  -h, --help            Show this help message
+
+Notes:
+  1. The script copies the image manifest remotely via
+     'docker buildx imagetools create', so it preserves multi-arch images.
+  2. By default, the script syncs every platform the source image exposes.
+  3. If TARGET_IMAGE is omitted, DOCKERHUB_NAMESPACE is required and the
+     target becomes docker.io/<namespace>/<source_repo_basename>:<source_tag>.
+  4. Docker Hub login must already exist in your local docker config.
+EOF
+}
+
+log() {
+    printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
+}
+
+fail() {
+    log "ERROR: $*"
+    exit 1
+}
+
+require_command() {
+    local cmd="$1"
+    command -v "$cmd" >/dev/null 2>&1 || fail "Missing required command: $cmd"
+}
+
+require_shell_command() {
+    local cmd="$1"
+    local base_cmd="${cmd%% *}"
+    command -v "$base_cmd" >/dev/null 2>&1 || fail "Missing required command: $base_cmd"
+}
+
+retry() {
+    local attempts="$1"
+    shift
+
+    local i=1
+    while true; do
+        if "$@"; then
+            return 0
+        fi
+
+        if [ "$i" -ge "$attempts" ]; then
+            return 1
+        fi
+
+        sleep $((i * 2))
+        i=$((i + 1))
+    done
+}
+
+quote_sh() {
+    printf "'%s'" "${1//\'/\'\"\'\"\'}"
+}
+
+normalize_target_ref() {
+    local ref="$1"
+    local first_segment="${ref%%/*}"
+
+    if [[ "$first_segment" == *.* || "$first_segment" == *:* || "$first_segment" == "localhost" ]]; then
+        printf '%s\n' "$ref"
+    else
+        printf 'docker.io/%s\n' "$ref"
+    fi
+}
+
+strip_digest() {
+    printf '%s\n' "${1%%@*}"
+}
+
+extract_tag() {
+    local ref
+    local last_component
+
+    ref="$(strip_digest "$1")"
+    last_component="${ref##*/}"
+
+    if [[ "$last_component" == *:* ]]; then
+        printf '%s\n' "${last_component##*:}"
+    else
+        printf 'latest\n'
+    fi
+}
+
+extract_repo_without_tag() {
+    local ref
+    local last_component
+    local prefix
+
+    ref="$(strip_digest "$1")"
+    last_component="${ref##*/}"
+
+    if [[ "$last_component" == *:* ]]; then
+        prefix="${ref%/*}"
+        if [ "$prefix" = "$ref" ]; then
+            printf '%s\n' "${last_component%:*}"
+        else
+            printf '%s/%s\n' "$prefix" "${last_component%:*}"
+        fi
+    else
+        printf '%s\n' "$ref"
+    fi
+}
+
+extract_repo_basename() {
+    local repo_without_tag
+    repo_without_tag="$(extract_repo_without_tag "$1")"
+    printf '%s\n' "${repo_without_tag##*/}"
+}
+
+target_ref_has_tag_or_digest() {
+    local ref="$1"
+    local last_component="${ref##*/}"
+
+    [[ "$ref" == *"@"* || "$last_component" == *:* ]]
+}
+
+append_source_tag_if_missing() {
+    local target_ref="$1"
+    local source_ref="$2"
+
+    if target_ref_has_tag_or_digest "$target_ref"; then
+        printf '%s\n' "$target_ref"
+    else
+        printf '%s:%s\n' "$target_ref" "$(extract_tag "$source_ref")"
+    fi
+}
+
+build_default_target_ref() {
+    local source_ref="$1"
+    local namespace="$2"
+    local repo_name
+    local tag
+
+    repo_name="$(extract_repo_basename "$source_ref")"
+    tag="$(extract_tag "$source_ref")"
+    printf 'docker.io/%s/%s:%s\n' "$namespace" "$repo_name" "$tag"
+}
+
+inspect_raw_to_file() {
+    local image_ref="$1"
+    local output_file="$2"
+    local cmd
+
+    cmd="${DOCKER_CMD} buildx imagetools inspect --raw $(quote_sh "$image_ref")"
+    sh -lc "$cmd" >"$output_file"
+}
+
+collect_platforms() {
+    local raw_file="$1"
+
+    jq -r '
+        if (.manifests | type) == "array" then
+            .manifests[]
+            | [.platform.os, .platform.architecture, .platform.variant]
+            | map(select(. != null and . != ""))
+            | join("/")
+        else
+            empty
+        end
+    ' "$raw_file" | sort -u
+}
+
+manifest_kind() {
+    local raw_file="$1"
+
+    jq -r '
+        if (.manifests | type) == "array" then
+            "index"
+        else
+            "single"
+        end
+    ' "$raw_file"
+}
+
+ensure_required_platforms() {
+    local raw_file="$1"
+    local required_csv="$2"
+    local subject="$3"
+    local platform
+
+    while IFS= read -r platform; do
+        [ -n "$platform" ] || continue
+        if ! collect_platforms "$raw_file" | grep -Fxq "$platform"; then
+            fail "${subject} image is missing required platform: $platform"
+        fi
+    done < <(printf '%s\n' "$required_csv" | tr ',' '\n')
+}
+
+sync_manifest() {
+    local source_ref="$1"
+    local target_ref="$2"
+    local cmd
+
+    cmd="${DOCKER_CMD} buildx imagetools create --progress plain --tag $(quote_sh "$target_ref") $(quote_sh "$source_ref")"
+    sh -lc "$cmd"
+}
+
+main() {
+    local source_ref=""
+    local target_ref=""
+    local raw_manifest_file=""
+    local required_platforms=""
+    local source_kind=""
+    local target_kind=""
+
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            -h|--help)
+                usage
+                exit 0
+                ;;
+            --require-platforms)
+                [ "$#" -ge 2 ] || fail "--require-platforms requires a value"
+                required_platforms="$2"
+                shift 2
+                ;;
+            --docker-cmd)
+                [ "$#" -ge 2 ] || fail "--docker-cmd requires a value"
+                DOCKER_CMD="$2"
+                shift 2
+                ;;
+            --)
+                shift
+                break
+                ;;
+            -*)
+                fail "Unknown option: $1"
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+
+    [ "$#" -ge 1 ] || {
+        usage
+        fail "SOURCE_IMAGE is required"
+    }
+
+    source_ref="$1"
+    shift
+
+    if [ "$#" -ge 1 ]; then
+        target_ref="$(normalize_target_ref "$1")"
+        target_ref="$(append_source_tag_if_missing "$target_ref" "$source_ref")"
+        shift
+    else
+        [ -n "${DOCKERHUB_NAMESPACE:-}" ] || fail "TARGET_IMAGE is missing; set DOCKERHUB_NAMESPACE or pass TARGET_IMAGE explicitly"
+        target_ref="$(build_default_target_ref "$source_ref" "$DOCKERHUB_NAMESPACE")"
+    fi
+
+    [ "$#" -eq 0 ] || fail "Too many arguments"
+
+    require_shell_command "$DOCKER_CMD"
+    require_command jq
+    require_command mktemp
+
+    raw_manifest_file="$(mktemp)"
+    trap 'rm -f "$raw_manifest_file"' EXIT
+
+    log "Source image: $source_ref"
+    log "Target image: $target_ref"
+    log "Inspecting source manifest..."
+
+    if ! retry 3 inspect_raw_to_file "$source_ref" "$raw_manifest_file"; then
+        fail "Unable to inspect source image manifest"
+    fi
+
+    source_kind="$(manifest_kind "$raw_manifest_file")"
+    if [ "$source_kind" = "index" ]; then
+        log "Source platforms:"
+        collect_platforms "$raw_manifest_file" | sed 's/^/  - /'
+    else
+        log "Source manifest type: single-platform or non-index manifest"
+    fi
+
+    if [ -n "$required_platforms" ]; then
+        log "Required platforms: $required_platforms"
+        [ "$source_kind" = "index" ] || fail "Source image is not a multi-architecture manifest list/index, so required platform checks cannot pass"
+        ensure_required_platforms "$raw_manifest_file" "$required_platforms" "Source"
+    fi
+
+    log "Syncing image to Docker Hub..."
+    if ! retry 3 sync_manifest "$source_ref" "$target_ref"; then
+        fail "Failed to sync image to target registry"
+    fi
+
+    log "Verifying target manifest..."
+    if ! retry 3 inspect_raw_to_file "$target_ref" "$raw_manifest_file"; then
+        fail "Target image was pushed, but verification failed"
+    fi
+
+    target_kind="$(manifest_kind "$raw_manifest_file")"
+    if [ "$target_kind" = "index" ]; then
+        log "Target platforms:"
+        collect_platforms "$raw_manifest_file" | sed 's/^/  - /'
+    else
+        log "Target manifest type: single-platform or non-index manifest"
+    fi
+
+    if [ -n "$required_platforms" ]; then
+        [ "$target_kind" = "index" ] || fail "Target image is not a multi-architecture manifest list/index, so required platform checks cannot pass"
+        ensure_required_platforms "$raw_manifest_file" "$required_platforms" "Target"
+    fi
+
+    log "Completed"
+}
+
+main "$@"

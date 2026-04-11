@@ -1,0 +1,281 @@
+#!/bin/bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TMP_DIR="$SCRIPT_DIR/tmp"
+LOAD_LOCAL=0
+REMOTE_DOCKER_CMD="docker"
+LOCAL_DOCKER_CMD="docker"
+PLATFORMS="linux/amd64,linux/arm64"
+PROGRESS_PID=""
+PARTIAL_FILE=""
+
+usage() {
+    cat <<'EOF'
+Usage:
+  ./fetch-docker-image-ssh [options] IMAGE ssh [ssh options] HOST
+
+Examples:
+  ./fetch-docker-image-ssh redis:7.4 ssh root@ssr
+  ./fetch-docker-image-ssh nginx:latest ssh -i ~/.ssh/id_ed25519 -p 2222 root@ssr
+  ./fetch-docker-image-ssh --remote-docker-cmd "sudo docker" ubuntu:24.04 ssh app@server
+  ./fetch-docker-image-ssh --platforms linux/amd64,linux/arm64 coturn/coturn:4.6.3 ssh root@ssr
+  ./fetch-docker-image-ssh --load-local --local-docker-cmd "sudo docker" alpine:latest ssh root@ssr
+
+Options:
+  --load-local              Run local docker load after download
+  --platforms LIST          Comma-separated platforms to export
+                            Default: linux/amd64,linux/arm64
+  --remote-docker-cmd CMD   Docker command on the remote host (default: docker)
+  --local-docker-cmd CMD    Docker command on the local machine for --load-local
+  -h, --help                Show this help message
+
+Notes:
+  1. The first non-option argument is treated as IMAGE.
+  2. Everything after IMAGE is treated as the SSH command.
+  3. The script pulls every platform from --platforms on the remote host,
+     then streams 'docker image save --platform=...' back to ./tmp.
+  4. By default, the tar file is only saved locally and is not loaded.
+  5. If the remote Docker can't export all requested platforms, the script
+     fails instead of silently producing a single-architecture archive.
+EOF
+}
+
+log() {
+    printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
+}
+
+fail() {
+    log "ERROR: $*"
+    exit 1
+}
+
+cleanup() {
+    local exit_code=$?
+
+    if [ -n "${PROGRESS_PID:-}" ]; then
+        kill "$PROGRESS_PID" >/dev/null 2>&1 || true
+        wait "$PROGRESS_PID" 2>/dev/null || true
+    fi
+
+    if [ -n "${PARTIAL_FILE:-}" ] && [ -f "${PARTIAL_FILE:-}" ]; then
+        rm -f "$PARTIAL_FILE"
+    fi
+
+    trap - EXIT
+    return "$exit_code"
+}
+
+require_command() {
+    local cmd="$1"
+    command -v "$cmd" >/dev/null 2>&1 || fail "Missing required command: $cmd"
+}
+
+require_shell_command() {
+    local cmd="$1"
+    local base_cmd="${cmd%% *}"
+    command -v "$base_cmd" >/dev/null 2>&1 || fail "Missing required command: $base_cmd"
+}
+
+quote_sh() {
+    printf "'%s'" "${1//\'/\'\"\'\"\'}"
+}
+
+sanitize_filename() {
+    local value="$1"
+    value="${value//@/_}"
+    value="${value//\//_}"
+    value="${value//:/_}"
+    value="${value// /_}"
+    printf '%s' "$value" | sed 's/[^A-Za-z0-9._-]/_/g'
+}
+
+human_size() {
+    local bytes="$1"
+
+    if command -v numfmt >/dev/null 2>&1; then
+        numfmt --to=iec --suffix=B "$bytes"
+    else
+        printf '%sB' "$bytes"
+    fi
+}
+
+start_progress_reporter() {
+    local file_path="$1"
+
+    (
+        local size
+        local human
+
+        while true; do
+            sleep 5
+
+            [ -f "$file_path" ] || exit 0
+
+            size="$(stat -c '%s' "$file_path" 2>/dev/null || echo 0)"
+            human="$(human_size "$size")"
+            log "Downloading image archive... received $human"
+        done
+    ) &
+
+    PROGRESS_PID=$!
+}
+
+run_remote_docker_pull_and_save() {
+    local image="$1"
+    local platforms="$2"
+    shift
+    shift
+    local ssh_cmd=("$@")
+    local image_q
+    local platforms_q
+    local remote_inner
+    local remote_cmd
+
+    image_q="$(quote_sh "$image")"
+    platforms_q="$(quote_sh "$platforms")"
+    remote_inner="
+set -e
+platforms=${platforms_q}
+IFS=,
+for platform in \$platforms; do
+    ${REMOTE_DOCKER_CMD} pull --platform \"\$platform\" ${image_q} 1>&2
+done
+${REMOTE_DOCKER_CMD} image save --platform=${platforms_q} ${image_q}
+"
+    remote_cmd="sh -lc $(quote_sh "$remote_inner")"
+
+    "${ssh_cmd[@]}" "$remote_cmd"
+}
+
+run_local_docker_load() {
+    local tar_file="$1"
+    local load_cmd
+
+    load_cmd="${LOCAL_DOCKER_CMD} load -i $(quote_sh "$tar_file")"
+    sh -lc "$load_cmd"
+}
+
+main() {
+    local image=""
+    local -a ssh_cmd=()
+    local safe_platforms
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            -h|--help)
+                usage
+                exit 0
+                ;;
+            --load-local)
+                LOAD_LOCAL=1
+                shift
+                ;;
+            --platforms)
+                [ "$#" -ge 2 ] || fail "--platforms requires a value"
+                PLATFORMS="$2"
+                shift 2
+                ;;
+            --remote-docker-cmd)
+                [ "$#" -ge 2 ] || fail "--remote-docker-cmd requires a value"
+                REMOTE_DOCKER_CMD="$2"
+                shift 2
+                ;;
+            --local-docker-cmd)
+                [ "$#" -ge 2 ] || fail "--local-docker-cmd requires a value"
+                LOCAL_DOCKER_CMD="$2"
+                shift 2
+                ;;
+            --)
+                shift
+                break
+                ;;
+            -*)
+                fail "Unknown option: $1"
+                ;;
+            *)
+                image="$1"
+                shift
+                break
+                ;;
+        esac
+    done
+
+    [ -n "$image" ] || {
+        usage
+        fail "IMAGE is required"
+    }
+
+    [ "$#" -gt 0 ] || {
+        usage
+        fail "SSH command is required"
+    }
+
+    ssh_cmd=("$@")
+    [ "${ssh_cmd[0]##*/}" = "ssh" ] || fail "SSH command must start with 'ssh'"
+
+    require_command ssh
+    if [ "$LOAD_LOCAL" -eq 1 ]; then
+        require_shell_command "$LOCAL_DOCKER_CMD"
+    fi
+
+    mkdir -p "$TMP_DIR"
+
+    local timestamp
+    local safe_image_name
+    local tar_file
+    local load_output
+
+    timestamp="$(date '+%Y%m%d_%H%M%S')"
+    safe_image_name="$(sanitize_filename "$image")"
+    safe_platforms="$(sanitize_filename "$PLATFORMS")"
+    tar_file="$TMP_DIR/${safe_image_name}_${safe_platforms}_${timestamp}.tar"
+    PARTIAL_FILE="${tar_file}.part"
+
+    rm -f "$PARTIAL_FILE"
+    : >"$PARTIAL_FILE"
+    trap cleanup EXIT
+
+    log "Remote image: $image"
+    log "Requested platforms: $PLATFORMS"
+    log "Local tar path: $tar_file"
+    log "Pulling and streaming from remote host..."
+    log "No output during 'docker save' is normal; progress will be printed every 5 seconds"
+
+    start_progress_reporter "$PARTIAL_FILE"
+
+    if ! run_remote_docker_pull_and_save "$image" "$PLATFORMS" "${ssh_cmd[@]}" >"$PARTIAL_FILE"; then
+        fail "Remote multi-platform pull/save failed. Ensure the image publishes all requested platforms and the remote Docker supports multi-platform export."
+    fi
+
+    [ -s "$PARTIAL_FILE" ] || fail "Downloaded tar file is empty"
+
+    if [ -n "${PROGRESS_PID:-}" ]; then
+        kill "$PROGRESS_PID" >/dev/null 2>&1 || true
+        wait "$PROGRESS_PID" 2>/dev/null || true
+        PROGRESS_PID=""
+    fi
+
+    mv "$PARTIAL_FILE" "$tar_file"
+    PARTIAL_FILE=""
+
+    log "Image archive downloaded successfully"
+    if [ "$LOAD_LOCAL" -eq 1 ]; then
+        log "Loading image locally..."
+
+        if ! load_output="$(run_local_docker_load "$tar_file" 2>&1)"; then
+            printf '%s\n' "$load_output" >&2
+            fail "Local docker load failed"
+        fi
+
+        printf '%s\n' "$load_output"
+    else
+        log "Skipping local docker load"
+    fi
+
+    log "Tar saved at: $tar_file"
+    trap - EXIT
+    log "Completed"
+}
+
+main "$@"
