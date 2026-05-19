@@ -1,0 +1,14 @@
+.git
+logs
+state
+example-data
+tmp
+rclone-sync.env
+.env
+*.env
+*.key
+*secret*.json
+*credentials*.json
+*.log
+__pycache__
+*.pyc

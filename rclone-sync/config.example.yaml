@@ -1,0 +1,76 @@
+version: 1
+
+global:
+  timezone: Asia/Shanghai
+  dry_run_default: true
+  log_level: INFO
+  stats: 30s
+  transfers: 4
+  checkers: 8
+  retries: 3
+  low_level_retries: 10
+  logs_dir: /logs
+  state_dir: /state
+  # Optional when mounting rclone.conf. Env remotes do not need this.
+  # rclone_config: /config/rclone/rclone.conf
+
+defaults:
+  safety:
+    dry_run: true
+    max_delete: 1000
+    max_delete_size: 100G
+    allow_delete_excluded: false
+    allow_root_path: false
+    deny_overlapping_paths: true
+  filters:
+    exclude_extensions:
+      - .tmp
+      - .part
+    exclude:
+      - "**/.DS_Store"
+      - "**/Thumbs.db"
+
+jobs:
+  - name: local-to-local-copy
+    enabled: true
+    operation: copy
+    source_root: /data/source
+    target_root: /data/target/server-a
+    directories:
+      - "."
+    date:
+      before: "2026-01-01"
+    filters:
+      exclude:
+        - "**/cache/**"
+    safety:
+      dry_run: true
+
+  - name: b2-old-archive-to-drive
+    enabled: false
+    operation: archive
+    source_root: src:my-bucket
+    target_root: dst:archive/my-bucket
+    directories:
+      - logs
+      - exports
+    age:
+      older_than: 3M
+    archive:
+      delete_empty_source_dirs: true
+    safety:
+      dry_run: true
+      max_delete: 10000
+      max_delete_size: 500G
+
+  - name: mirror-to-replica
+    enabled: false
+    operation: mirror
+    source_root: src:critical
+    target_root: dst:replica/critical
+    directories:
+      - "."
+    safety:
+      dry_run: true
+      max_delete: 100
+      backup_dir: dst:replica-deleted/critical/${RUN_DATE}

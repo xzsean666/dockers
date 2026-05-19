@@ -1,0 +1,8 @@
+tmp/
+logs/
+state/
+rclone-sync.env
+.env
+__pycache__/
+*.pyc
+*.log

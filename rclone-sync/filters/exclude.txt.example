@@ -1,0 +1,6 @@
+# Example rclone exclude rules for RCLONE_SYNC_EXCLUDE_FROM=/filters/exclude.txt
+**/.DS_Store
+**/Thumbs.db
+**/cache/**
+**/*.tmp
+**/*.part
