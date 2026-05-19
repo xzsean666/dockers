@@ -24,6 +24,13 @@ DEFAULT_MULTI_PLATFORM_BUILDER="${PUBLISH_DEFAULT_BUILDER:-dockers-publisher}"
 INSTALL_BINFMT="${PUBLISH_INSTALL_BINFMT:-0}"
 BINFMT_IMAGE="${PUBLISH_BINFMT_IMAGE:-tonistiigi/binfmt:latest}"
 BINFMT_RETRIES="${PUBLISH_BINFMT_RETRIES:-3}"
+UPDATE_README="${PUBLISH_UPDATE_README:-1}"
+README_FILE="${PUBLISH_README_FILE:-README.md}"
+README_EXPLICIT=0
+if [[ -n "${PUBLISH_README_FILE:-}" ]]; then
+    README_EXPLICIT=1
+fi
+HUB_DESCRIPTION="${PUBLISH_DESCRIPTION:-}"
 
 usage() {
     cat <<'EOF'
@@ -57,6 +64,10 @@ Options:
       --install-binfmt     Install binfmt/QEMU through tonistiigi/binfmt if the
                            builder does not report a requested platform.
       --binfmt-image IMG   binfmt installer image. Default: tonistiigi/binfmt:latest.
+      --readme FILE        Update Docker Hub overview from this Markdown file.
+                           Relative paths are resolved from context. Default: README.md.
+      --no-readme          Do not update Docker Hub overview after push.
+      --description TEXT   Docker Hub short description. Maximum 100 characters.
       --no-latest          Do not also tag/push IMAGE:latest.
       --skip-tests         Skip Python compile and local smoke tests.
       --load               Build for local Docker only instead of pushing.
@@ -76,6 +87,9 @@ Environment:
   PUBLISH_INSTALL_BINFMT   Set to 1 to install binfmt/QEMU when needed.
   PUBLISH_BINFMT_IMAGE     binfmt installer image. Default: tonistiigi/binfmt:latest.
   PUBLISH_BINFMT_RETRIES   binfmt installer retry count. Default: 3.
+  PUBLISH_UPDATE_README    Set to 0 to skip Docker Hub overview update. Default: 1.
+  PUBLISH_README_FILE      Markdown file for Docker Hub overview. Default: README.md.
+  PUBLISH_DESCRIPTION      Optional Docker Hub short description, max 100 characters.
 
 Notes:
   - This script never stores Docker Hub credentials.
@@ -100,6 +114,117 @@ run() {
     if [[ "$DRY_RUN" == "0" ]]; then
         "$@"
     fi
+}
+
+dockerhub_auth_token() {
+    local auth_payload auth_response token
+
+    auth_payload="$(
+        DOCKERHUB_USERNAME="$DOCKERHUB_USERNAME" DOCKERHUB_TOKEN="$DOCKERHUB_TOKEN" python3 - <<'PY'
+import json
+import os
+
+print(json.dumps({
+    "username": os.environ["DOCKERHUB_USERNAME"],
+    "password": os.environ["DOCKERHUB_TOKEN"],
+}))
+PY
+    )"
+
+    auth_response="$(
+        printf '%s' "$auth_payload" \
+            | curl -fsS \
+                -H "Content-Type: application/json" \
+                --data-binary @- \
+                "https://hub.docker.com/v2/users/login/"
+    )" || die "Docker Hub API login failed"
+
+    token="$(
+        printf '%s' "$auth_response" | python3 -c '
+import json
+import sys
+
+print(json.load(sys.stdin).get("token", ""))
+'
+    )"
+    [[ -n "$token" ]] || die "Docker Hub API login response did not include token"
+    printf '%s' "$token"
+}
+
+update_dockerhub_overview() {
+    [[ "$PUSH" == "1" ]] || return 0
+    [[ "$UPDATE_README" == "1" ]] || return 0
+
+    local readme_path namespace repository payload token
+    if [[ "$README_FILE" = /* ]]; then
+        readme_path="$README_FILE"
+    else
+        readme_path="$CONTEXT_DIR/$README_FILE"
+    fi
+
+    if [[ ! -f "$readme_path" ]]; then
+        if [[ "$README_EXPLICIT" == "1" ]]; then
+            die "README file not found: $readme_path"
+        fi
+        log "No README file found at $readme_path; skipping Docker Hub overview update"
+        return 0
+    fi
+
+    if [[ -z "${DOCKERHUB_USERNAME:-}" || -z "${DOCKERHUB_TOKEN:-}" ]]; then
+        if [[ "$README_EXPLICIT" == "1" ]]; then
+            die "DOCKERHUB_USERNAME and DOCKERHUB_TOKEN are required to update Docker Hub overview"
+        fi
+        log "Skipping Docker Hub overview update; set DOCKERHUB_USERNAME/DOCKERHUB_TOKEN to publish $README_FILE"
+        return 0
+    fi
+
+    if [[ "$IMAGE" != */* || "$IMAGE" == */*/* ]]; then
+        if [[ "$README_EXPLICIT" == "1" ]]; then
+            die "Docker Hub overview update requires image format namespace/repository: $IMAGE"
+        fi
+        log "Skipping Docker Hub overview update; image is not in namespace/repository form: $IMAGE"
+        return 0
+    fi
+    command -v curl >/dev/null 2>&1 || die "curl is required to update Docker Hub overview"
+    command -v python3 >/dev/null 2>&1 || die "python3 is required to update Docker Hub overview"
+
+    namespace="${IMAGE%%/*}"
+    repository="${IMAGE#*/}"
+
+    if [[ "$DRY_RUN" == "1" ]]; then
+        log "+ update Docker Hub overview for $namespace/$repository from $readme_path"
+        return 0
+    fi
+
+    log "Updating Docker Hub overview for $namespace/$repository from $readme_path"
+    token="$(dockerhub_auth_token)"
+    payload="$(
+        README_PATH="$readme_path" HUB_DESCRIPTION="$HUB_DESCRIPTION" python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+payload = {
+    "full_description": Path(os.environ["README_PATH"]).read_text(encoding="utf-8"),
+}
+description = os.environ.get("HUB_DESCRIPTION", "")
+if description:
+    payload["description"] = description
+print(json.dumps(payload, ensure_ascii=False))
+PY
+    )"
+
+    printf '%s' "$payload" \
+        | curl -fsS \
+            -X PATCH \
+            -H "Authorization: JWT $token" \
+            -H "Content-Type: application/json" \
+            --data-binary @- \
+            "https://hub.docker.com/v2/repositories/$namespace/$repository/" \
+            >/dev/null \
+        || die "failed to update Docker Hub overview for $namespace/$repository"
+
+    log "Updated Docker Hub overview for $namespace/$repository"
 }
 
 buildx_driver() {
@@ -238,6 +363,20 @@ while [[ $# -gt 0 ]]; do
             BINFMT_IMAGE="${2:-}"
             shift 2
             ;;
+        --readme)
+            README_FILE="${2:-}"
+            UPDATE_README=1
+            README_EXPLICIT=1
+            shift 2
+            ;;
+        --no-readme)
+            UPDATE_README=0
+            shift
+            ;;
+        --description)
+            HUB_DESCRIPTION="${2:-}"
+            shift 2
+            ;;
         --no-latest)
             LATEST=0
             shift
@@ -270,9 +409,12 @@ done
 [[ -n "$CONTEXT" ]] || die "--context cannot be empty"
 [[ -n "$DOCKERFILE" ]] || die "--file cannot be empty"
 [[ -n "$BINFMT_IMAGE" ]] || die "--binfmt-image cannot be empty"
+[[ -n "$README_FILE" ]] || die "--readme cannot be empty"
 [[ "$IMAGE" =~ ^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._/-]*$ ]] || die "invalid Docker image name: $IMAGE"
 [[ "$TAG" =~ ^[A-Za-z0-9_.-]+$ ]] || die "invalid tag: $TAG"
 [[ "$BINFMT_RETRIES" =~ ^[1-9][0-9]*$ ]] || die "PUBLISH_BINFMT_RETRIES must be a positive integer"
+[[ "$UPDATE_README" =~ ^[01]$ ]] || die "PUBLISH_UPDATE_README must be 0 or 1"
+(( ${#HUB_DESCRIPTION} <= 100 )) || die "--description/PUBLISH_DESCRIPTION must be 100 characters or less"
 
 if [[ "$CONTEXT" = /* ]]; then
     CONTEXT_DIR="$CONTEXT"
@@ -350,6 +492,7 @@ else
 fi
 
 run "${build_cmd[@]}"
+update_dockerhub_overview
 
 if [[ "$DRY_RUN" == "1" ]]; then
     log "Dry run complete; no image was built, loaded, or pushed"
