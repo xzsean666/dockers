@@ -31,6 +31,7 @@ if [[ -n "${PUBLISH_README_FILE:-}" ]]; then
     README_EXPLICIT=1
 fi
 HUB_DESCRIPTION="${PUBLISH_DESCRIPTION:-}"
+README_ONLY=0
 
 usage() {
     cat <<'EOF'
@@ -66,6 +67,7 @@ Options:
       --binfmt-image IMG   binfmt installer image. Default: tonistiigi/binfmt:latest.
       --readme FILE        Update Docker Hub overview from this Markdown file.
                            Relative paths are resolved from context. Default: README.md.
+      --readme-only        Only update Docker Hub overview; do not build or push.
       --no-readme          Do not update Docker Hub overview after push.
       --description TEXT   Docker Hub short description. Maximum 100 characters.
       --no-latest          Do not also tag/push IMAGE:latest.
@@ -114,6 +116,109 @@ run() {
     if [[ "$DRY_RUN" == "0" ]]; then
         "$@"
     fi
+}
+
+dockerhub_credentials_from_docker_config() {
+    python3 - <<'PY'
+import base64
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+config_dir = Path(os.environ.get("DOCKER_CONFIG") or Path.home() / ".docker")
+config_path = config_dir / "config.json"
+if not config_path.exists():
+    sys.exit(0)
+
+try:
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+except Exception:
+    sys.exit(0)
+
+hosts = [
+    "https://index.docker.io/v1/",
+    "index.docker.io",
+    "docker.io",
+    "registry-1.docker.io",
+    "https://registry-1.docker.io/v2/",
+]
+auths = config.get("auths") or {}
+cred_helpers = config.get("credHelpers") or {}
+creds_store = config.get("credsStore")
+
+def emit(username, secret):
+    if username and secret:
+        print(json.dumps({"username": username, "token": secret}))
+        sys.exit(0)
+
+for host in hosts:
+    helper = cred_helpers.get(host) or creds_store
+    if not helper:
+        continue
+    helper_bin = f"docker-credential-{helper}"
+    if not shutil.which(helper_bin):
+        continue
+    try:
+        proc = subprocess.run(
+            [helper_bin, "get"],
+            input=host,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            check=True,
+        )
+        data = json.loads(proc.stdout)
+    except Exception:
+        continue
+    emit(data.get("Username"), data.get("Secret"))
+
+for host in hosts:
+    entry = auths.get(host) or {}
+    auth = entry.get("auth")
+    if not auth:
+        continue
+    try:
+        raw = base64.b64decode(auth).decode("utf-8")
+    except Exception:
+        continue
+    if ":" not in raw:
+        continue
+    username, secret = raw.split(":", 1)
+    emit(username, secret)
+PY
+}
+
+resolve_dockerhub_credentials() {
+    if [[ -n "${DOCKERHUB_USERNAME:-}" && -n "${DOCKERHUB_TOKEN:-}" ]]; then
+        return 0
+    fi
+
+    local credentials
+    credentials="$(dockerhub_credentials_from_docker_config || true)"
+    [[ -n "$credentials" ]] || return 1
+
+    DOCKERHUB_USERNAME="$(
+        printf '%s' "$credentials" | python3 -c '
+import json
+import sys
+
+print(json.load(sys.stdin).get("username", ""))
+'
+    )"
+    DOCKERHUB_TOKEN="$(
+        printf '%s' "$credentials" | python3 -c '
+import json
+import sys
+
+print(json.load(sys.stdin).get("token", ""))
+'
+    )"
+
+    [[ -n "$DOCKERHUB_USERNAME" && -n "$DOCKERHUB_TOKEN" ]] || return 1
+    log "Using Docker Hub credentials from Docker config for overview update"
 }
 
 dockerhub_auth_token() {
@@ -170,14 +275,6 @@ update_dockerhub_overview() {
         return 0
     fi
 
-    if [[ -z "${DOCKERHUB_USERNAME:-}" || -z "${DOCKERHUB_TOKEN:-}" ]]; then
-        if [[ "$README_EXPLICIT" == "1" ]]; then
-            die "DOCKERHUB_USERNAME and DOCKERHUB_TOKEN are required to update Docker Hub overview"
-        fi
-        log "Skipping Docker Hub overview update; set DOCKERHUB_USERNAME/DOCKERHUB_TOKEN to publish $README_FILE"
-        return 0
-    fi
-
     if [[ "$IMAGE" != */* || "$IMAGE" == */*/* ]]; then
         if [[ "$README_EXPLICIT" == "1" ]]; then
             die "Docker Hub overview update requires image format namespace/repository: $IMAGE"
@@ -193,6 +290,14 @@ update_dockerhub_overview() {
 
     if [[ "$DRY_RUN" == "1" ]]; then
         log "+ update Docker Hub overview for $namespace/$repository from $readme_path"
+        return 0
+    fi
+
+    if ! resolve_dockerhub_credentials; then
+        if [[ "$README_EXPLICIT" == "1" ]]; then
+            die "DOCKERHUB_USERNAME and DOCKERHUB_TOKEN are required to update Docker Hub overview"
+        fi
+        log "Skipping Docker Hub overview update; set DOCKERHUB_USERNAME/DOCKERHUB_TOKEN or run docker login for the current user"
         return 0
     fi
 
@@ -369,6 +474,12 @@ while [[ $# -gt 0 ]]; do
             README_EXPLICIT=1
             shift 2
             ;;
+        --readme-only)
+            README_ONLY=1
+            UPDATE_README=1
+            README_EXPLICIT=1
+            shift
+            ;;
         --no-readme)
             UPDATE_README=0
             shift
@@ -405,13 +516,17 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "$IMAGE" ]] || die "--image is required, for example --image username/rclone-sync"
-[[ -n "$TAG" ]] || die "--tag is required, for example --tag 0.1.0"
+if [[ "$README_ONLY" != "1" ]]; then
+    [[ -n "$TAG" ]] || die "--tag is required, for example --tag 0.1.0"
+fi
 [[ -n "$CONTEXT" ]] || die "--context cannot be empty"
 [[ -n "$DOCKERFILE" ]] || die "--file cannot be empty"
 [[ -n "$BINFMT_IMAGE" ]] || die "--binfmt-image cannot be empty"
 [[ -n "$README_FILE" ]] || die "--readme cannot be empty"
 [[ "$IMAGE" =~ ^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._/-]*$ ]] || die "invalid Docker image name: $IMAGE"
-[[ "$TAG" =~ ^[A-Za-z0-9_.-]+$ ]] || die "invalid tag: $TAG"
+if [[ -n "$TAG" ]]; then
+    [[ "$TAG" =~ ^[A-Za-z0-9_.-]+$ ]] || die "invalid tag: $TAG"
+fi
 [[ "$BINFMT_RETRIES" =~ ^[1-9][0-9]*$ ]] || die "PUBLISH_BINFMT_RETRIES must be a positive integer"
 [[ "$UPDATE_README" =~ ^[01]$ ]] || die "PUBLISH_UPDATE_README must be 0 or 1"
 (( ${#HUB_DESCRIPTION} <= 100 )) || die "--description/PUBLISH_DESCRIPTION must be 100 characters or less"
@@ -429,6 +544,12 @@ else
     DOCKERFILE_PATH="$CONTEXT_DIR/$DOCKERFILE"
 fi
 [[ -f "$DOCKERFILE_PATH" ]] || die "Dockerfile not found: $DOCKERFILE_PATH"
+
+if [[ "$README_ONLY" == "1" ]]; then
+    update_dockerhub_overview
+    log "Docker Hub overview update complete"
+    exit 0
+fi
 
 if [[ "$LOAD" == "1" && "$PLATFORMS" == *,* ]]; then
     die "--load only supports one platform; use --platforms linux/amd64"
