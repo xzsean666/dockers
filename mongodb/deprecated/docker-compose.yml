@@ -1,0 +1,43 @@
+  version: '3.3'
+  services:
+    mongodb_cluster0:
+      image: mongo:7.0
+      container_name: mongodb_cluster0
+      restart: always
+      env_file: .env
+      environment:
+        MONGO_INITDB_ROOT_USERNAME: $MONGO_INITDB_ROOT_USERNAME
+        MONGO_INITDB_ROOT_PASSWORD: $MONGO_INITDB_ROOT_PASSWORD
+      ports:
+        - "0.0.0.0:7117:27017"
+      volumes:
+        - ./data0:/data/db
+        - ./keyFile:/data/mongodb/keyFile
+      # command: mongod --auth --port 27017
+      command: ["--replSet", "rs", "--bind_ip_all", "--port", "27017","--keyFile","/data/mongodb/keyFile","--wiredTigerCacheSizeGB","4","--auth"]
+      deploy:
+        resources:
+          limits:
+            cpus: '1'
+            memory: "4G"
+    mongodb_cluster1:
+      image: mongo:7.0
+      container_name: mongodb_cluster1
+      restart: always
+      env_file: .env
+      environment:
+        MONGO_INITDB_ROOT_USERNAME: $MONGO_INITDB_ROOT_USERNAME
+        MONGO_INITDB_ROOT_PASSWORD: $MONGO_INITDB_ROOT_PASSWORD
+      ports:
+        - "0.0.0.0:7217:27017"
+      volumes:
+        - ./data1:/data/db
+        - ./keyFile:/data/mongodb/keyFile
+      # command: mongod --auth --port 27017
+      command: ["--replSet", "rs", "--bind_ip_all", "--port", "27017","--keyFile","/data/mongodb/keyFile","--wiredTigerCacheSizeGB","4","--auth"]
+      deploy:
+        resources:
+          limits:
+            cpus: '1'
+            memory: "4G"
+      
